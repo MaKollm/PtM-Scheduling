@@ -245,7 +245,7 @@ class Result():
         resultSave = self.result
         resultSave['param'] = self.param.param
 
-        savemat("data_" + string + "_" + str(iteration) + ".mat", resultSave)
+        savemat("data_" + string + "_" + ".mat", resultSave)
 
     
     def visualization(self, OptModel, cf, elec, pv, pp):

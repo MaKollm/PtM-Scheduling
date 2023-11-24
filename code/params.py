@@ -104,8 +104,8 @@ class Param():
         self.param['charField']['ABSDES']['index']['densityBiogasOut'] = 6
         self.param['charField']['ABSDES']['index']['moleFractionMethaneBiogasOut'] = 7
         self.param['charField']['ABSDES']['index']['massFlowSynthesisgasIn'] = 8
-        self.param['charField']['ABSDES']['index']['moleFractionH2Synthesisgas'] = 14
-        self.param['charField']['ABSDES']['index']['moleFractionCO2Synthesisgas'] = 15
+        self.param['charField']['ABSDES']['index']['moleFractionH2Synthesisgas'] = 38
+        self.param['charField']['ABSDES']['index']['moleFractionCO2Synthesisgas'] = 39
         self.param['charField']['ABSDES']['index']['massFlowMethanolWaterStorageIn'] = 16
         self.param['charField']['ABSDES']['index']['densityMethanolWaterStorageIn'] = 18
         self.param['charField']['ABSDES']['index']['massFlowMethanolWaterInCycle'] = 36

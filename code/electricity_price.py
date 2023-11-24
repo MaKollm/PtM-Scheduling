@@ -15,7 +15,7 @@ class PowerPrice():
 
     def __init__(self, param):
         self.param = param
-        self.startInit = 24*5 #+ 24*7*25
+        self.startInit = 24*5 
         self.start = self.startInit
         self.stop = self.param.param['controlParameters']['numberOfTimeSteps']
 
@@ -26,10 +26,6 @@ class PowerPrice():
         # Energy price
         energyCharts_DataFrame = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie\energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2022.xlsx')
         energyCharts = energyCharts_DataFrame.to_numpy()
-        #powerPriceQuarterHourly = energyCharts[:,5] / 1000
-        #self.powerPriceHourlyAll = []
-        #for i in range(0, len(powerPriceQuarterHourly)-1,4):
-        #    self.powerPriceHourlyAll.append(np.mean(powerPriceQuarterHourly[i:i+3]))
     
         self.powerPriceHourlyAll = energyCharts[1:,4] / 1000
         self.update(param, 0)
@@ -49,11 +45,6 @@ class PowerPrice():
         self.uncertainty()
         self.numberUncertaintySamples = self.param.param['prices']['numberOfUncertaintySamples']
 
-        #x = list(range(0,len(self.powerPriceHourly)))
-        #plt.plot(x,self.powerPriceHourly,'-b',linewidth=2)
-        #plt.show()
-        #time.sleep(5)
-        #plt.close('all')
 
     def uncertainty(self):
         cov = np.zeros((len(self.powerPriceHourly),len(self.powerPriceHourly)))
@@ -93,9 +84,6 @@ class PowerPrice():
         """
 
         
-
-
-
     def get_real_data(self):
         driver = webdriver.Edge()
 
