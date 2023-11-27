@@ -45,8 +45,8 @@ def start_optimization():
     param.get()
 
     ## Create characteristic fields
-    cf = CharField(param)
-    cf.create_characteristic_fields()
+    cm = CharMap(param)
+    cm.funcCreateCharacteristicMaps()
 
     ## Create electrolyser
     elec = Electrolyser(param)
@@ -61,20 +61,20 @@ def start_optimization():
     ## Create models for optimization
     param.update(pv, pp)
     optModel = Optimization_Model(param)
-    optModel.create_optimization_model(cf, elec, pv, pp)
+    optModel.create_optimization_model(cm, elec, pv, pp)
     optModel.run_optimization()
 
     ## Create results
     resultOpt = Result(param)
-    resultOpt.get_results(optModel, cf, elec, pv, pp)
+    resultOpt.get_results(optModel, cm, elec, pv, pp)
 
     simulation = Simulation(param)
     
     if param.param['controlParameters']['uncertaintyPP'] == False:
-        simulation.start_simulation(param, resultOpt, cf, elec, pv, pp)
+        simulation.start_simulation(param, resultOpt, cm, elec, pv, pp)
 
-    resultOpt.print(optModel, cf, elec, pv, pp)
-    resultOpt.save_data(optModel, cf, elec, pv, pp)
+    resultOpt.print(optModel, cm, elec, pv, pp)
+    resultOpt.save_data(optModel, cm, elec, pv, pp)
     
 
 
@@ -92,7 +92,7 @@ def start_optimization():
             resultOpt.result["input"]["powerOutBattery"] = resultOpt.result["input"]["powerOutBatteryRaw"][i]
             resultOpt.result["input"]["powerOutBatterySold"] = resultOpt.result["input"]["powerOutBatterySoldRaw"][i]
             resultTemp = deepcopy(resultOpt)
-            simulation.start_simulation(param, resultTemp, cf, elec, pv, pp)
+            simulation.start_simulation(param, resultTemp, cm, elec, pv, pp)
             print("costs: " + str(resultTemp.result['costs']['all']))
             print(simulation.constrViolationOutput)
             meanCosts = meanCosts + resultTemp.result['costs']['all']
@@ -110,7 +110,7 @@ def start_optimization():
             pv.powerAvailable = pv.pvSamples[i]
             param.update(pv,pp)
             resultTemp = deepcopy(resultOpt)
-            simulation.start_simulation(param, resultTemp, cf, elec, pv, pp)
+            simulation.start_simulation(param, resultTemp, cm, elec, pv, pp)
             if simulation.constrViolationInputBool == True:
                 numberOfConstrViolations = numberOfConstrViolations + 1
             print(simulation.constrViolationOutput)
@@ -131,7 +131,7 @@ def test():
     ## Control parameters
     optimizationHorizon = 5*24                  # Considered time period in hours
     timeStep = 1                                # Time step of optimization in hours
-    timeLimit = 1000                            # Time limit for the solver to terminate in seconds
+    timeLimit = 100                            # Time limit for the solver to terminate in seconds
     optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
     benchmark = True                            # If true benchmark scenario is calculated
     sameOutputAsBenchmark = True                # If true the optimization has to has the exact same output as the benchmark scenario
@@ -150,11 +150,11 @@ def test():
     ## Load parameters
     param = Param(optimizationHorizon,timeStep,timeLimit,optimalityGap,testFeasibility,benchmark,sameOutputAsBenchmark,rateOfChangeConstranints,transitionConstraints,powerSale,uncertaintyPV,uncertaintyPP,checkPVUncertainty,checkPPUncertainty,considerPV,considerBattery)
     
-    param.get()
+    param.funcGet()
 
     ## Create characteristic fields
-    cf = CharField(param)
-    cf.create_characteristic_fields()
+    cm = CharMap(param)
+    cm.funcCreateCharacteristicMaps()
 
     ## Create electrolyser
     elec = Electrolyser(param)
@@ -172,26 +172,26 @@ def test():
         print("Iteration:")
         print(iteration)
 
-        elec.update(param)
-        pv.update(param, iteration)
-        pp.update(param, iteration)
-        param.update(pv, pp)
+        elec.funcUpdate(param)
+        pv.funcUpdate(param, iteration)
+        pp.funcUpdate(param, iteration)
+        param.funcUpdate(pv, pp)
 
         ## Create models for optimization
-        optModel.create_optimization_model(cf, elec, pv, pp)
-        optModel.run_optimization()
+        optModel.funcCreateOptimizationModel(cm, elec, pv, pp)
+        optModel.funcRunOptimization()
 
         ## Create results
         resultOpt = Result(param)
-        resultOpt.get_results(optModel, cf, elec, pv, pp)
+        resultOpt.funcGetResult(optModel, cm, elec, pv, pp)
 
         simulation = Simulation(param)
         
         if param.param['controlParameters']['uncertaintyPP'] == False:
-            simulation.start_simulation(param, resultOpt, cf, elec, pv, pp)
+            simulation.funcStartSimulation(param, resultOpt, cm, elec, pv, pp)
 
-        resultOpt.print(optModel, cf, elec, pv, pp)
-        resultOpt.save_data(optModel, cf, elec, pv, pp, iteration)
+        resultOpt.funcPrintResult(optModel, cm, elec, pv, pp)
+        resultOpt.funcSaveResult(optModel, cm, elec, pv, pp, iteration)
 
 
 

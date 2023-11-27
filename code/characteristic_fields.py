@@ -44,14 +44,11 @@ class CharMap():
 
     
 
-    def update(self):
-        self.set_charMap_output_ABSDES()
-        self.set_charMap_output_MEOHSYN()
-        self.set_charMap_output_DIS()
+    def funcUpdate(self):
+        self.funcSetCharMapsOutput()
 
 
-
-    def create_characteristic_fields(self):
+    def funcCreateCharacteristicMaps(self):
         ## Base data
         dataFrameCharMapAbsorptionDesorptionMethanolsynthesis = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\AbsorptionDesorption_MethanolSynthese.xlsx')
         dataFrameCharMapMethanolsynthesis = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\MethanolSynthese.xlsx')
@@ -64,13 +61,14 @@ class CharMap():
         self.arrOperationPointsMEOHSYN = []
         self.arrOperationPointsDIS = []
 
+        #self.arrOperationPointsABSDES.append(0)
         for i in range(0,arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[0]):
             if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionMethaneBiogasOut] >= self.param.param['constraints']['minMoleFractionCH4BiogasOut']:
                 if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionHydrogenSynthesisgas] / arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionCarbondioxideSynthesisgas] >= self.param.param['constraints']['minRatioH2_CO2_Synthesisgas']:
                     if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionHydrogenSynthesisgas] / arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionCarbondioxideSynthesisgas] <= self.param.param['constraints']['maxRatioH2_CO2_Synthesisgas']:
                         self.arrOperationPointsABSDES.append(i)
 
-        
+    
 
         for i in range(0,arrCharMapMethanolsynthesis.shape[0]):
             self.arrOperationPointsMEOHSYN.append(i)
@@ -117,122 +115,106 @@ class CharMap():
         ## Calculation of characteristic fields of ABSDES
         self.arrCharMap.append([])
         self.iLengthCharMapABSDES = arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[1]
-        for i in range(0,self.self.iLengthCharMapABSDES+3):
+        self.iIndexOverallPowerPlantUnit1 = self.iLengthCharMapABSDES + 0
+        self.iIndexVolumeFlowBiogasIn = self.iLengthCharMapABSDES + 1
+        self.iIndexVolumeFlowBiogasOut = self.iLengthCharMapABSDES + 2
+
+        for i in range(0,self.iLengthCharMapABSDES+3):
             self.arrCharMap[0].append({})
 
 
         for i in self.arrOperationPoints[0]:
-            for k in range(0,self.lengthCharField_ABSDES):
+            for k in range(0,self.iLengthCharMapABSDES):
                 self.arrCharMap[0][k][(i)] = arrCharMapAbsorptionDesorptionMethanolsynthesis[i,k]
 
-            fPowerConsumptionComponentsUnit1 = 0
+            fPowerPlantComponentsUnit1 = 0
             for j in range(0,len(self.iIndexPowerPlantComponentsUnit1)):
-                fPowerConsumptionComponentsUnit1 = fPowerConsumptionComponentsUnit1 + np.abs(arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexPowerPlantComponentsUnit1[j]]) / 1000
+                fPowerPlantComponentsUnit1 = fPowerPlantComponentsUnit1 + np.abs(arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexPowerPlantComponentsUnit1[j]]) / 1000
 
     
-            self.arrCharMap[0][self.lengthCharField_ABSDES+0][(i)] = fPowerConsumptionComponentsUnit1
-            
-            self.arrCharMap[0][self.lengthCharField_ABSDES+1][(i)] = self.param.param['biogas']['pressureIn'] / self.param.param['p0'] * self.charField[0][self.iIndexMassFlowBiogasIn][(i)] / self.param.param['biogas']['densityIn'] * self.param.param['T0'] / self.param.param['biogas']['temperatureIn']
-            self.arrCharMap[0][self.lengthCharField_ABSDES+2][(i)] = self.param.param['biogas']['pressureOut'] / self.param.param['p0'] * self.charField[0][self.iIndexMassFlowBiogasOut][(i)] /  self.charField[0][self.iIndexDensityBiogasOut][(i)] * self.param.param['T0'] / self.param.param['biogas']['temperatureOut']
-            
-                
+            self.arrCharMap[0][self.iIndexOverallPowerPlantUnit1][(i)] = fPowerPlantComponentsUnit1     
+            self.arrCharMap[0][self.iIndexVolumeFlowBiogasIn][(i)] = self.param.param['biogas']['pressureIn'] / self.param.param['p0'] * self.arrCharMap[0][self.iIndexMassFlowBiogasIn][(i)] / self.param.param['biogas']['densityIn'] * self.param.param['T0'] / self.param.param['biogas']['temperatureIn']
+            self.arrCharMap[0][self.iIndexVolumeFlowBiogasOut][(i)] = self.param.param['biogas']['pressureOut'] / self.param.param['p0'] * self.arrCharMap[0][self.iIndexMassFlowBiogasOut][(i)] /  self.arrCharMap[0][self.iIndexDensityBiogasOut][(i)] * self.param.param['T0'] / self.param.param['biogas']['temperatureOut']
+              
+
         ## Calculation of characteristic field of MEOHSYN
-        self.charField.append([])
-        self.lengthCharField_MEOHSYN = charField_Methanolsynthesis.shape[1]
-        for i in range(0,self.lengthCharField_MEOHSYN+1):
-            self.charField[1].append({})
+        self.arrCharMap.append([])
+        self.iLengthCharMapMEOHSYN = arrCharMapMethanolsynthesis.shape[1]
+        self.iIndexOverallPowerPlantUnit2 = self.iLengthCharMapMEOHSYN + 0
+        for i in range(0,self.iLengthCharMapMEOHSYN+1):
+            self.arrCharMap[1].append({})
 
         for i in self.arrOperationPoints[1]:
-                if (i != 0):
-                    for k in range(0,self.lengthCharField_MEOHSYN):
-                        self.charField[1][k][(i)] = charField_Methanolsynthesis[i-1,k]
+            for k in range(0,self.iLengthCharMapMEOHSYN):
+                self.arrCharMap[1][k][(i)] = arrCharMapMethanolsynthesis[i,k]
 
-                    self.charField[1][self.lengthCharField_MEOHSYN+0][(i)] = (abs(charField_Methanolsynthesis[i-1,self.iIndexPowerPlantComponentsUnit2[0]]) \
-                                                        + abs(charField_Methanolsynthesis[i-1,self.iIndexPowerPlantComponentsUnit2[1]]) \
-                                                        + abs(charField_Methanolsynthesis[i-1,self.iIndexPowerPlantComponentsUnit2[2]]) \
-                                                        + abs(charField_Methanolsynthesis[i-1,self.iIndexPowerPlantComponentsUnit2[3]])) / 1000
-                    
+            fPowerPlantComponentsUnit2 = 0
+            for j in range(0,len(self.iIndexPowerPlantComponentsUnit2)):
+                fPowerPlantComponentsUnit2 = fPowerPlantComponentsUnit2 + np.abs(arrCharMapMethanolsynthesis[i,self.iIndexPowerPlantComponentsUnit2[j]]) / 1000
 
-                else:
-                    for k in range(0,self.lengthCharField_MEOHSYN):
-                        self.charField[1][k][(i)] = charField_Methanolsynthesis[i-1,k]
-
-                    self.charField[1][self.iIndexMassFlowSynthesisgasOut][(i)] = 0
-                    self.charField[1][self.iIndexMassFlowMethanolWaterStorageInSynthesis][(i)] = 0
-                    self.charField[1][self.iIndexDensityMethanolWaterStorageInSynthesis][(i)] = self.param.param['storageMethanolWater']['InitialDensity']
-                    self.charField[1][self.lengthCharField_MEOHSYN+0][(i)] = 0
+            
+            self.arrCharMap[1][self.iIndexOverallPowerPlantUnit2][(i)] = fPowerPlantComponentsUnit2
 
         ## Calculation of characteristic field of DIS
-        self.charField.append([])
-        self.lengthCharField_DIS = charField_Distillation.shape[1]
-        for i in range(0,self.lengthCharField_DIS+1):
-            self.charField[2].append({})
+        self.arrCharMap.append([])
+        self.iLengthCharMapDIS = arrCharMapDistillation.shape[1]
+        self.iIndexOverallPowerPlantUnit3 = self.iLengthCharMapDIS + 0
+        for i in range(0,self.iLengthCharMapDIS+1):
+            self.arrCharMap[2].append({})
 
         for i in self.arrOperationPoints[2]: 
-                if (i != 0):
-                    for k in range(0,self.lengthCharField_DIS):
-                        self.charField[2][k][(i)] = charField_Distillation[i,k]
+            for k in range(0,self.iLengthCharMapDIS):
+                self.arrCharMap[2][k][(i)] = arrCharMapDistillation[i,k]
 
-                    self.charField[2][self.lengthCharField_DIS+0][(i)] = (abs(charField_Distillation[i,self.iIndexPowerPlantComponentsUnit3[0]]) \
-                                                + abs(charField_Distillation[i,self.iIndexPowerPlantComponentsUnit3[1]]) \
-                                                + abs(charField_Distillation[i,self.iIndexPowerPlantComponentsUnit3[2]]) \
-                                                + abs(charField_Distillation[i,self.iIndexPowerPlantComponentsUnit3[3]])) / 1000
-                
-                else:
-                    for k in range(0,self.lengthCharField_DIS):
-                        self.charField[2][k][(i)] = charField_Distillation[i,k]
+            fPowerPlantComponentsUnit3 = 0
+            for j in range(0,len(self.iIndexPowerPlantComponentsUnit3)):
+                fPowerPlantComponentsUnit3 = fPowerPlantComponentsUnit3 + np.abs(arrCharMapDistillation[i,self.iIndexPowerPlantComponentsUnit3[j]]) / 1000
 
-                    self.charField[2][self.iIndexMassFlowMethanolOut][(i)] = 0
-                    self.charField[2][self.iIndexMassFlowMethanolWaterStorageOut][(i)] = 0
-                    self.charField[2][self.lengthCharField_DIS][(i)] = 0
-        
+
+            self.arrCharMap[2][self.iLengthCharMapDIS+0][(i)] = fPowerPlantComponentsUnit3
+        print(self.arrCharMap[2])
         ## Set variables
 
-        self.set_charField_input_variables()
-        self.set_charField_input_variables_conversion()
-        self.set_charField_output_ABSDES()
-        self.set_charField_output_MEOHSYN()
-        self.set_charField_output_DIS()
+        self.funcSetCharMapsInputVariables()
+        self.funcSetCharMapsInputVariablesConversion()
+        self.funcSetCharMapsOutput()
 
 
-    def set_charField_input_variables(self):
-        self.ABSDESValues = self.arrOperationPoints[0]
-        self.synthesisgasInMethanolSynthesisValues = self.arrOperationPoints[1]
-        self.methanolWaterInDistillationValues = self.arrOperationPoints[2]
+    def funcSetCharMapsInputVariables(self):
+        self.arrOperationPointsABSDES = self.arrOperationPoints[0]
+        self.arrOperationPointsMEOHSYN = self.arrOperationPoints[1]
+        self.arrOperationPointsDIS = self.arrOperationPoints[2]
 
 
-    def set_charField_input_variables_conversion(self):
-        self.hydrogenInValuesConversion = self.arrOperationPointsConversionToRealInputValues[0]
-        self.biogasInValuesConversion = self.arrOperationPointsConversionToRealInputValues[1]
-        self.synthesisgasInMethanolSynthesisValuesConversion = self.arrOperationPointsConversionToRealInputValues[2]
-        self.methanolWaterInDistillationValuesConversion = self.arrOperationPointsConversionToRealInputValues[3]
+    def funcSetCharMapsInputVariablesConversion(self):
+        self.arrHydrogenInValuesConversion = self.arrOperationPointsConversionToRealInputValues[0]
+        self.arrBiogasInValuesConversion = self.arrOperationPointsConversionToRealInputValues[1]
+        self.arrSynthesisgasInMethanolSynthesisValuesConversion = self.arrOperationPointsConversionToRealInputValues[2]
+        self.arrMethanolWaterInDistillationValuesConversion = self.arrOperationPointsConversionToRealInputValues[3]
 
-    def set_charField_output_ABSDES(self):
-        self.massFlowHydrogenIn = self.charField[0][self.iIndexMassFlowHydrogenIn]
-        self.massFlowBiogasIn = self.charField[0][self.iIndexMassFlowBiogasIn]  
-        self.massFlowBiogasOut = self.charField[0][self.iIndexMassFlowBiogasOut] 
-        self.densityBiogasOut = self.charField[0][self.iIndexDensityBiogasOut]
-        self.moleFractionMethaneBiogasOut = self.charField[0][self.iIndexMoleFractionMethaneBiogasOut]
-        self.massFlowSynthesisgasIn = self.charField[0][self.iIndexMassFlowSynthesisgasIn]
-        self.moleFractionHydrogenSynthesisgas = self.charField[0][self.iIndexMoleFractionHydrogenSynthesisgas]
-        self.moleFractionCarbondioxideSynthesisgas = self.charField[0][self.iIndexMoleFractionCarbondioxideSynthesisgas]
-        self.massFlowMethanolWaterStorageIn = self.charField[0][self.iIndexMassFlowMethanolWaterStorageIn]
-        self.densityMethanolWaterStorageIn = self.charField[0][self.iIndexDensityMethanolWaterStorageIn]
-        self.massFlowMethanolWaterInCycle = self.charField[0][self.iIndexMassFlowMethanolWaterInCycle]
-        self.massFlowAdditionalHydrogen = self.charField[0][self.iIndexMassFlowAdditionalHydrogen]
+    def funcSetCharMapsOutput(self):
+        self.massFlowHydrogenIn = self.arrCharMap[0][self.iIndexMassFlowHydrogenIn]
+        self.massFlowBiogasIn = self.arrCharMap[0][self.iIndexMassFlowBiogasIn]  
+        self.massFlowBiogasOut = self.arrCharMap[0][self.iIndexMassFlowBiogasOut] 
+        self.densityBiogasOut = self.arrCharMap[0][self.iIndexDensityBiogasOut]
+        self.moleFractionMethaneBiogasOut = self.arrCharMap[0][self.iIndexMoleFractionMethaneBiogasOut]
+        self.massFlowSynthesisgasIn = self.arrCharMap[0][self.iIndexMassFlowSynthesisgasIn]
+        self.moleFractionHydrogenSynthesisgas = self.arrCharMap[0][self.iIndexMoleFractionHydrogenSynthesisgas]
+        self.moleFractionCarbondioxideSynthesisgas = self.arrCharMap[0][self.iIndexMoleFractionCarbondioxideSynthesisgas]
+        self.massFlowMethanolWaterStorageIn = self.arrCharMap[0][self.iIndexMassFlowMethanolWaterStorageIn]
+        self.densityMethanolWaterStorageIn = self.arrCharMap[0][self.iIndexDensityMethanolWaterStorageIn]
+        self.massFlowMethanolWaterInCycle = self.arrCharMap[0][self.iIndexMassFlowMethanolWaterInCycle]
+        self.massFlowAdditionalHydrogen = self.arrCharMap[0][self.iIndexMassFlowAdditionalHydrogen]
+        self.powerPlantComponentsUnit1 = self.arrCharMap[0][self.iIndexOverallPowerPlantUnit1]
+        self.volumeBiogasIn = self.arrCharMap[0][self.iIndexVolumeFlowBiogasIn]
+        self.volumeBiogasOut = self.arrCharMap[0][self.iIndexVolumeFlowBiogasOut]
 
-        self.powerPlantComponentsUnit1 = self.charField[0][self.lengthCharField_ABSDES+0]
-        self.volumeBiogasIn = self.charField[0][self.lengthCharField_ABSDES+1]
-        self.volumeBiogasOut = self.charField[0][self.lengthCharField_ABSDES+2]
+        self.massFlowSynthesisgasOut = self.arrCharMap[1][self.iIndexMassFlowSynthesisgasOut]  
+        self.massFlowMethanolWaterStorageInSynthesis = self.arrCharMap[1][self.iIndexMassFlowMethanolWaterStorageInSynthesis] 
+        self.densityMethanolWaterStorageInSynthesis = self.arrCharMap[1][self.iIndexDensityMethanolWaterStorageInSynthesis]
+        self.powerPlantComponentsUnit2 = self.arrCharMap[1][self.iIndexOverallPowerPlantUnit2]
 
-    def set_charField_output_MEOHSYN(self):
-        self.massFlowSynthesisgasOut = self.charField[1][self.iIndexMassFlowSynthesisgasOut]  
-        self.massFlowMethanolWaterStorageInSynthesis = self.charField[1][self.iIndexMassFlowMethanolWaterStorageInSynthesis] 
-        self.densityMethanolWaterStorageInSynthesis = self.charField[1][self.iIndexDensityMethanolWaterStorageInSynthesis]
-        self.powerPlantComponentsUnit2 = self.charField[1][self.lengthCharField_MEOHSYN+0]
-
-    def set_charField_output_DIS(self):
-        self.massFlowMethanolWaterStorageOut = self.charField[2][self.iIndexMassFlowMethanolWaterStorageOut]  
-        self.massFlowMethanolOut = self.charField[2][self.iIndexMassFlowMethanolOut] 
-        self.powerPlantComponentsUnit3 = self.charField[2][self.lengthCharField_DIS+0]
+        self.massFlowMethanolWaterStorageOut = self.arrCharMap[2][self.iIndexMassFlowMethanolWaterStorageOut]  
+        self.massFlowMethanolOut = self.arrCharMap[2][self.iIndexMassFlowMethanolOut] 
+        self.powerPlantComponentsUnit3 = self.arrCharMap[2][self.iIndexOverallPowerPlantUnit3]
 

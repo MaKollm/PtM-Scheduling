@@ -24,41 +24,41 @@ from pvlib.pvsystem import PVSystem
 class PV():
     def __init__(self, param):
         self.param = param
-        self.startInit = 24*5 #+ 24*7*25   #312
-        self.module = self.param.param['pv']['module']
-        self.inverter = self.param.param['pv']['inverter']
-        self.pvLat = "49.09"
-        self.pvLon = "8.44"
-        self.numberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
-        self.alpha = self.param.param['pv']['alpha']
-        self.covValue = self.param.param['pv']['covariance']
+        self.iStartInit = 24*5 #+ 24*7*25   #312
+        self.strModule = self.param.param['pv']['module']
+        self.strInverter = self.param.param['pv']['inverter']
+        self.strPvLat = "49.09"
+        self.strPvLon = "8.44"
+        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
+        self.fAlpha = self.param.param['pv']['alpha']
+        self.fCovValue = self.param.param['pv']['covariance']
 
-        self.create_data()
-        self.update(param, 0)
+        self.funcCreateData()
+        self.funcUpdate(param, 0)
 
 
-    def update(self, param, iteration):
+    def funcUpdate(self, param, iteration):
         self.param = param
 
-        self.start = self.startInit + 24*7*iteration
-        self.stop = self.start + self.param.param['controlParameters']['numberOfTimeSteps']
+        self.iStart = self.iStartInit + 24*7*iteration
+        self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
 
-        self.powerAvailable = []
-        self.powerAvailable.append(0)
+        self.arrPowerAvailable = []
+        self.arrPowerAvailable.append(0)
 
-        for i in range(self.start, self.stop):
+        for i in range(self.iStart, self.iStop):
             if param.param['controlParameters']['considerPV'] == True:
-                self.powerAvailable.append(self.pvdata[int(self.start + self.param.param['controlParameters']['timeStep']*(i-self.start))] * self.param.param['controlParameters']['timeStep'])
+                self.arrPowerAvailable.append(self.pvdata[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))] * self.param.param['controlParameters']['timeStep'])
             else:
-                self.powerAvailable.append(0)
+                self.arrPowerAvailable.append(0)
     
         
-        self.uncertainty()
-        self.numberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
-        self.alpha = self.param.param['pv']['alpha']
-        self.covValue = self.param.param['pv']['covariance']
+        self.funcAddUncertainty()
+        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
+        self.fAlpha = self.param.param['pv']['alpha']
+        self.iCovValue = self.param.param['pv']['covariance']
 
-    def create_data(self):
+    def funcCreateData(self):
 
         # Weather
         global_2020 = pd.read_csv(r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV\pvgis_global_2020.csv', skiprows=8, nrows = 8784,index_col=0)
@@ -84,8 +84,8 @@ class PV():
         sandia_modules = pvlib.pvsystem.retrieve_sam('SandiaMod')
         sapm_inverters = pvlib.pvsystem.retrieve_sam('cecinverter')
 
-        module = sandia_modules[self.module]
-        inverter = sapm_inverters[self.inverter]
+        module = sandia_modules[self.strModule]
+        inverter = sapm_inverters[self.strInverter]
 
         temperature_parameters = pvlib.temperature.TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass']
 
@@ -117,27 +117,27 @@ class PV():
         #modelChain.results.ac.plot(figsize=(16,9))
         #plt.show()
 
-    def uncertainty(self):
-        cov = np.zeros((len(self.powerAvailable),len(self.powerAvailable)))
-        mean = np.zeros(cov.shape[0])
+    def funcAddUncertainty(self):
+        arrCov = np.zeros((len(self.arrPowerAvailable),len(self.arrPowerAvailable)))
+        arrMean = np.zeros(arrCov.shape[0])
 
-        for i in range(0,cov.shape[0]):
-            cov[i][i] = 1 + i*(self.covValue)
-            mean[i] = self.powerAvailable[i]
+        for i in range(0,arrCov.shape[0]):
+            arrCov[i][i] = 1 + i*(self.fCovValue)
+            arrMean[i] = self.arrPowerAvailable[i]
 
         np.random.seed(1)
-        pvSamples = np.random.multivariate_normal(mean,cov,self.numberUncertaintySamples)
-        for i in range(0,cov.shape[0]):
-            if self.powerAvailable[i] == 0:
-                for j in range(0,self.numberUncertaintySamples):
-                    pvSamples[j][i] = 0
+        arrPvSamples = np.random.multivariate_normal(arrMean,arrCov,self.iNumberUncertaintySamples)
+        for i in range(0,arrCov.shape[0]):
+            if self.arrPowerAvailable[i] == 0:
+                for j in range(0,self.iNumberUncertaintySamples):
+                    arrPvSamples[j][i] = 0
             
-        for i in range(0,cov.shape[0]):
-            for j in range(0,self.numberUncertaintySamples):
-                if pvSamples[j][i] <= 0:
-                    pvSamples[j][i] = 0
+        for i in range(0,arrCov.shape[0]):
+            for j in range(0,self.iNumberUncertaintySamples):
+                if arrPvSamples[j][i] <= 0:
+                    arrPvSamples[j][i] = 0
 
-        self.pvSamples = pvSamples
+        self.arrPvSamples = arrPvSamples
 
         """
         x = list(range(0,len(self.powerAvailable)))
@@ -151,7 +151,7 @@ class PV():
         """
         
 
-    def get_real_data(self):
+    def funcGetRealData(self):
         
         locationCheck = "https://api.forecast.solar/check/" + self.pvLat + "/" + self.pvLon
         location = requests.get(locationCheck)
