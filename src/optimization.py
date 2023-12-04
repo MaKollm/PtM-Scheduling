@@ -16,7 +16,6 @@ from copy import deepcopy
 from matplotlib.animation import FuncAnimation
 
 
-
 ##################################
 ########## Optimization ##########
 
@@ -61,20 +60,20 @@ def start_optimization():
     ## Create models for optimization
     param.update(pv, pp)
     optModel = Optimization_Model(param)
-    optModel.create_optimization_model(cm, elec, pv, pp)
-    optModel.run_optimization()
+    optModel.funcCreateOptimizationModel(cm, elec, pv, pp)
+    optModel.funcRunOptimization()
 
     ## Create results
     resultOpt = Result(param)
-    resultOpt.get_results(optModel, cm, elec, pv, pp)
+    resultOpt.funcGetResult(optModel, cm, elec, pv, pp)
 
     simulation = Simulation(param)
     
     if param.param['controlParameters']['uncertaintyPP'] == False:
-        simulation.start_simulation(param, resultOpt, cm, elec, pv, pp)
+        simulation.funcStartSimulation(param, resultOpt, cm, elec, pv, pp)
 
-    resultOpt.print(optModel, cm, elec, pv, pp)
-    resultOpt.save_data(optModel, cm, elec, pv, pp)
+    resultOpt.funcPrintResult(optModel, cm, elec, pv, pp)
+    resultOpt.funcSaveResult(optModel, cm, elec, pv, pp)
     
 
 
@@ -85,17 +84,17 @@ def start_optimization():
         resultTemp = Result(param)
         for i in range(0, pp.numberUncertaintySamples):
             print(i)
-            pp.powerPriceHourly = pp.powerPriceSamples[i]
-            param.update(pv,pp)
-            resultOpt.result["input"]["powerBought"] = resultOpt.result["input"]["powerBoughtRaw"][i]
-            resultOpt.result["input"]["powerInBatteryBought"] = resultOpt.result["input"]["powerInBatteryBoughtRaw"][i]
-            resultOpt.result["input"]["powerOutBattery"] = resultOpt.result["input"]["powerOutBatteryRaw"][i]
-            resultOpt.result["input"]["powerOutBatterySold"] = resultOpt.result["input"]["powerOutBatterySoldRaw"][i]
+            pp.arrPowerPriceHourly = pp.arrPowerPriceSamples[i]
+            param.funcUpdate(pv,pp)
+            resultOpt.dictResult["input"]["powerBought"] = resultOpt.dictResult["input"]["powerBoughtRaw"][i]
+            resultOpt.dictResult["input"]["powerInBatteryBought"] = resultOpt.dictResult["input"]["powerInBatteryBoughtRaw"][i]
+            resultOpt.dictResult["input"]["powerOutBattery"] = resultOpt.dictResult["input"]["powerOutBatteryRaw"][i]
+            resultOpt.dictResult["input"]["powerOutBatterySold"] = resultOpt.dictResult["input"]["powerOutBatterySoldRaw"][i]
             resultTemp = deepcopy(resultOpt)
-            simulation.start_simulation(param, resultTemp, cm, elec, pv, pp)
+            simulation.funcStartSimulation(param, resultTemp, cm, elec, pv, pp)
             print("costs: " + str(resultTemp.result['costs']['all']))
             print(simulation.constrViolationOutput)
-            meanCosts = meanCosts + resultTemp.result['costs']['all']
+            meanCosts = meanCosts + resultTemp.dictResult['costs']['all']
 
         meanCosts = meanCosts / pv.numberUncertaintySamples
         print(meanCosts)
@@ -106,22 +105,22 @@ def start_optimization():
         numberOfConstrViolations = 0
         meanCosts = 0
         resultTemp = Result(param)
-        for i in range(0, pv.numberUncertaintySamples):
-            pv.powerAvailable = pv.pvSamples[i]
-            param.update(pv,pp)
+        for i in range(0, pv.iNumberUncertaintySamples):
+            pv.arrPowerAvailable = pv.arrPvSamples[i]
+            param.funcUpdate(pv,pp)
             resultTemp = deepcopy(resultOpt)
-            simulation.start_simulation(param, resultTemp, cm, elec, pv, pp)
+            simulation.funcStartSimulation(param, resultTemp, cm, elec, pv, pp)
             if simulation.constrViolationInputBool == True:
                 numberOfConstrViolations = numberOfConstrViolations + 1
             print(simulation.constrViolationOutput)
             for t in range(0, param.param['controlParameters']['numberOfTimeSteps']+1):
-                if resultTemp.result['input']['powerBought'][t] >= maxPowerBought[t]:
-                    maxPowerBought[t] = resultTemp.result['input']['powerBought'][t]
+                if resultTemp.dictResult['input']['powerBought'][t] >= maxPowerBought[t]:
+                    maxPowerBought[t] = resultTemp.dictResult['input']['powerBought'][t]
 
-            meanCosts = meanCosts + resultTemp.result['costs']['all']
+            meanCosts = meanCosts + resultTemp.dictResult['costs']['all']
         
         maxPowerBoughtPrice = [i*j for i,j in zip(maxPowerBought, param.param['prices']['power'])]
-        meanCosts = meanCosts / pv.numberUncertaintySamples
+        meanCosts = meanCosts / pv.iNumberUncertaintySamples
         print(np.sum(maxPowerBoughtPrice))
         print(meanCosts)
         print(numberOfConstrViolations)  
