@@ -1,8 +1,9 @@
 ###### Requirements without Version Specifiers ######
 matplotlib
 pandas
-gurobipy
+gurobipy==10.0.0
 numpy
 pvlib
+pytest
 
 ###### Requirements with Version Specifiers ######
