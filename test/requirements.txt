@@ -6,5 +6,6 @@ numpy
 pvlib
 pytest
 selenium
+imageio
 
 ###### Requirements with Version Specifiers ######
