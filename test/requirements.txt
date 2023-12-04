@@ -5,5 +5,7 @@ gurobipy==10.0.0
 numpy
 pvlib
 pytest
+selenium
+imageio
 
 ###### Requirements with Version Specifiers ######
