@@ -32,9 +32,11 @@ class Param():
             self.considerBattery = args[15]
         
 
-    def update(self, pv, pp):
-        self.param['pv']['powerAvailable'] = pv.powerAvailable
-        self.param['prices']['power'] = pp.powerPriceHourly
+    def funcUpdate(self, pv, pp):
+        self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
+        self.param['prices']['power'] = pp.arrPowerPriceHourly
+
+        print(self.param['prices']['power'])
 
         self.param['constraints']['methanolWaterStorageFillEqual']['LowerBound'] = -self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqual']
         self.param['constraints']['methanolWaterStorageFillEqual']['UpperBound'] = self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqual']
@@ -48,7 +50,7 @@ class Param():
         self.param['constraints']['batteryChargeEqual']['LowerBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqual']
         self.param['constraints']['batteryChargeEqual']['UpperBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqual']
 
-    def get(self):
+    def funcGet(self):
 
         ## Parameter
         self.param = {}
@@ -93,39 +95,39 @@ class Param():
 
 
         ## Characteristic field indices
-        self.param['charField'] = {}
+        self.param['charMap'] = {}
 
         # Characteristic field indices ABSDES
-        self.param['charField']['ABSDES'] = {}
-        self.param['charField']['ABSDES']['index'] = {}
-        self.param['charField']['ABSDES']['index']['massFlowHydrogenIn'] = 2
-        self.param['charField']['ABSDES']['index']['massFlowBiogasIn'] = 3
-        self.param['charField']['ABSDES']['index']['massFlowBiogasOut'] = 4
-        self.param['charField']['ABSDES']['index']['densityBiogasOut'] = 6
-        self.param['charField']['ABSDES']['index']['moleFractionMethaneBiogasOut'] = 7
-        self.param['charField']['ABSDES']['index']['massFlowSynthesisgasIn'] = 8
-        self.param['charField']['ABSDES']['index']['moleFractionH2Synthesisgas'] = 14
-        self.param['charField']['ABSDES']['index']['moleFractionCO2Synthesisgas'] = 15
-        self.param['charField']['ABSDES']['index']['massFlowMethanolWaterStorageIn'] = 16
-        self.param['charField']['ABSDES']['index']['densityMethanolWaterStorageIn'] = 18
-        self.param['charField']['ABSDES']['index']['massFlowMethanolWaterInCycle'] = 36
-        self.param['charField']['ABSDES']['index']['massFlowAdditionalHydrogen'] = 37
-        self.param['charField']['ABSDES']['index']['powerPlantComponentsUnit1'] = [25,27,28,29,31,32,34,35]
+        self.param['charMap']['ABSDES'] = {}
+        self.param['charMap']['ABSDES']['index'] = {}
+        self.param['charMap']['ABSDES']['index']['massFlowHydrogenIn'] = 2
+        self.param['charMap']['ABSDES']['index']['massFlowBiogasIn'] = 3
+        self.param['charMap']['ABSDES']['index']['massFlowBiogasOut'] = 4
+        self.param['charMap']['ABSDES']['index']['densityBiogasOut'] = 6
+        self.param['charMap']['ABSDES']['index']['moleFractionMethaneBiogasOut'] = 7
+        self.param['charMap']['ABSDES']['index']['massFlowSynthesisgasIn'] = 8
+        self.param['charMap']['ABSDES']['index']['moleFractionH2Synthesisgas'] = 38
+        self.param['charMap']['ABSDES']['index']['moleFractionCO2Synthesisgas'] = 39
+        self.param['charMap']['ABSDES']['index']['massFlowMethanolWaterStorageIn'] = 16
+        self.param['charMap']['ABSDES']['index']['densityMethanolWaterStorageIn'] = 18
+        self.param['charMap']['ABSDES']['index']['massFlowMethanolWaterInCycle'] = 36
+        self.param['charMap']['ABSDES']['index']['massFlowAdditionalHydrogen'] = 37
+        self.param['charMap']['ABSDES']['index']['powerPlantComponentsUnit1'] = [25,27,28,29,31,32,34,35]
 
         # Characteristic field indices MEOHSYN
-        self.param['charField']['MEOHSYN'] = {}
-        self.param['charField']['MEOHSYN']['index'] = {}
-        self.param['charField']['MEOHSYN']['index']['massFlowSynthesisgasOut'] = 2
-        self.param['charField']['MEOHSYN']['index']['massFlowMethanolWaterStorageIn'] = 3
-        self.param['charField']['MEOHSYN']['index']['densityMethanolWaterStorageIn'] = 4
-        self.param['charField']['MEOHSYN']['index']['powerPlantComponentsUnit2'] = [10,11,12,13]
+        self.param['charMap']['MEOHSYN'] = {}
+        self.param['charMap']['MEOHSYN']['index'] = {}
+        self.param['charMap']['MEOHSYN']['index']['massFlowSynthesisgasOut'] = 2
+        self.param['charMap']['MEOHSYN']['index']['massFlowMethanolWaterStorageIn'] = 3
+        self.param['charMap']['MEOHSYN']['index']['densityMethanolWaterStorageIn'] = 4
+        self.param['charMap']['MEOHSYN']['index']['powerPlantComponentsUnit2'] = [10,11,12,13]
 
         # Characteristic field indices DIS
-        self.param['charField']['DIS'] = {}
-        self.param['charField']['DIS']['index'] = {}
-        self.param['charField']['MEOHSYN']['index']['massFlowMethanolWaterStorageOut'] = 2
-        self.param['charField']['MEOHSYN']['index']['massFlowMethanolOut'] = 3
-        self.param['charField']['MEOHSYN']['index']['powerPlantComponentsUnit3'] = [7,8,9,10]
+        self.param['charMap']['DIS'] = {}
+        self.param['charMap']['DIS']['index'] = {}
+        self.param['charMap']['MEOHSYN']['index']['massFlowMethanolWaterStorageOut'] = 2
+        self.param['charMap']['MEOHSYN']['index']['massFlowMethanolOut'] = 3
+        self.param['charMap']['MEOHSYN']['index']['powerPlantComponentsUnit3'] = [7,8,9,10]
 
 
 
