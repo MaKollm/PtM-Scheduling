@@ -3,8 +3,12 @@
 from characteristic_fields import *
 
 import gurobipy as gp
+import math
 from gurobipy import GRB
 from gurobipy import *
+import time
+import os
+import pickle
 
 class Optimization_Model():
 
@@ -18,39 +22,74 @@ class Optimization_Model():
 
 
     def funcCreateOptimizationModel(self, cm, elec, pv, pp):
-
         self.m = gp.Model('ptm')
         self.m.ModelSense = GRB.MINIMIZE
-
         self.funcCreateVariables(cm, elec, pv, pp)
         self.funcCreateConstraints(cm, elec, pv, pp)
         self.funcCreateCostFunction(cm, elec, pv, pp)
-
+        self.funcSetInitialValues(cm, elec, pv, pp)
         self.m.update()
-
 
 
     def funcRunOptimization(self):
         self.m.Params.TimeLimit = self.param.param['controlParameters']['timeLimit']
         self.m.Params.MIPGap = self.param.param['controlParameters']['optimalityGap']
-        self.m.Params.LogToConsole = 1
+        self.m.Params.LogToConsole = 0
         if self.param.param['controlParameters']['testFeasibility'] == True:
             self.m.computeIIS()
             self.m.write("model.ilp")
-        
         self.m.optimize()
 
 
+
+    ########## Initial Values ##########
+    def funcSetInitialValues(self, cm, elec, pv, pp):
+        strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM'
+        if os.path.isfile(strPathInitialValues + "\input_data.pkl") == True:
+            with open(strPathInitialValues + "\input_data.pkl", 'rb') as f:
+                initialData = pickle.load(f)
+        
+            for t in self.arrTime:
+                for i in cm.arrOperationPointsABSDES:
+                    self.OptVarOperationPointABSDES[t,i].Start = initialData['input']['operationPoint_ABSDES'][t,i]
+
+                for i in cm.arrOperationPointsMEOHSYN:
+                    self.OptVarOperationPointMEOHSYN[t,i].Start = initialData['input']['operationPoint_MEOHSYN'][t,i]
+
+                for i in cm.arrOperationPointsDIS:
+                    self.OptVarOperationPointDIS[t,i].Start = initialData['input']['operationPoint_DIS'][t,i]
+
+                for i in range(0,6):
+                    self.OptVarOperationPointSwitch[t,i+1].Start = initialData['input']['operationPointSwitch'][t,i]
+
+                for i in elec.arrEnapterModules:
+                    self.OptVarPowerElectrolyser[t,i].Start = initialData['input']['powerElectrolyserRaw'][t,i]
+
+                for i in elec.arrEnapterModules:
+                    for j in range(0,4):
+                        self.OptVarModeElectrolyser[t,i,j].Start = initialData['input']['modeElectrolyserRaw'][t,i,j]
+                
+                self.OptVarUsageOfPV[t].Start = initialData['input']['usageOfPV'][t]
+                
+                self.OptVarPowerInBatteryPV[t].Start = initialData['input']['powerInBatteryPV'][t]
+
+                self.OptVarPowerInBatteryBought[t].Start = initialData['input']['powerInBatteryBought'][t]
+
+                self.OptVarPowerOutBattery[t].Start = initialData['input']['powerOutBattery'][t]
+
+                self.OptVarPowerOutBatterySold[t].Start = initialData['input']['powerOutBatterySold'][t]
+
+                self.OptVarPowerBought[t].Start = initialData['input']['powerBought'][t]
 
     ########## Variables ##########
     def funcCreateVariables(self, cm, elec, pv, pp):
         self.OptVarOperationPointABSDES = self.m.addVars(self.arrTime,cm.arrOperationPointsABSDES, vtype=GRB.BINARY)
         self.OptVarOperationPointMEOHSYN = self.m.addVars(self.arrTime,cm.arrOperationPointsMEOHSYN, vtype=GRB.BINARY)
         self.OptVarOperationPointDIS = self.m.addVars(self.arrTime,cm.arrOperationPointsDIS, vtype=GRB.BINARY)
-        self.OptVarOperationPointSwitch = self.m.addVars(self.arrTime,[1,2,3],vtype=GRB.BINARY)
+        self.OptVarOperationPointSwitch = self.m.addVars(self.arrTime,[1,2,3,4,5,6],vtype=GRB.BINARY)
 
         self.OptVarPowerElectrolyser = self.m.addVars(self.arrTime,self.param.param['electrolyser']['numberOfEnapterModules'],lb=self.param.param['electrolyser']['powerLowerBound'], ub=self.param.param['electrolyser']['powerUpperBound'],vtype=GRB.CONTINUOUS)
-        self.OptVarElectrolyserMode = self.m.addVars(self.arrTime,self.param.param['electrolyser']['numberOfEnapterModules'],4, vtype=GRB.BINARY)
+        self.OptVarModeElectrolyser = self.m.addVars(self.arrTime,self.param.param['electrolyser']['numberOfEnapterModules'],4, vtype=GRB.BINARY)
         self.OptVarUsageOfPV = self.m.addVars(self.arrTime,lb=0.0,ub=1000,vtype=GRB.CONTINUOUS)
         self.OptVarPowerInBatteryPV = self.m.addVars(self.arrTime,lb=0,ub=self.param.param['battery']['maxChargeRate'], vtype=GRB.CONTINUOUS)
         self.OptVarPowerInBatteryBought = self.m.addVars(self.arrTime,lb=0,ub=self.param.param['battery']['maxChargeRate'], vtype=GRB.CONTINUOUS)
@@ -74,14 +113,17 @@ class Optimization_Model():
         fTimeStep = self.param.param['controlParameters']['timeStep']
 
         if self.param.param['controlParameters']['uncertaintyPP'] == False:
-            print(cm.massFlowMethanolOut)
+            """
             self.m.setObjective(0
                     - gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(i,j)] * self.param.param['prices']['methanol'] * fTimeStep for i in self.arrTime for j in cm.arrOperationPointsDIS)
                     - gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(i,j)] * self.param.param['methane']['brennwert'] * self.param.param['prices']['methane'] * fTimeStep for i in self.arrTime for j in cm.arrOperationPointsABSDES)
                     + gp.quicksum(cm.volumeBiogasIn[(j)] * self.OptVarOperationPointABSDES[(i,j)] * self.param.param['biogas']['brennwert'] * self.param.param['prices']['biogas'] * fTimeStep for i in self.arrTime for j in cm.arrOperationPointsABSDES)
                     + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerBought[i] for i in self.arrTime)
                     - gp.quicksum(self.param.param['prices']['powerSold'] * self.OptVarPowerOutBatterySold[i] for i in self.arrTime))
-        
+            """
+            self.m.setObjective(0 
+                + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerBought[i] for i in self.arrTime))
+            
         else:
             self.m.setObjective(- gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(i,j)] * self.param.param['prices']['methanol'] * fTimeStep for i in self.arrTime for j in cm.arrOperationPointsDIS)
                 - gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(i,j)] * self.param.param['methane']['brennwert'] * self.param.param['prices']['methane'] * fTimeStep for i in self.arrTime for j in cm.arrOperationPointsABSDES)
@@ -90,29 +132,20 @@ class Optimization_Model():
                 - gp.quicksum(self.param.param['prices']['powerSold'] * self.OptVarPowerOutBatterySold[i,r] * 1/pp.iNumberUncertaintySamples for i in self.arrTime for r in range(0,pp.iNumberUncertaintySamples)))
 
 
-
     ########## Constraints ##########
     def funcCreateConstraints(self, cm, elec, pv, pp):
         fTimeStep = self.param.param['controlParameters']['timeStep']
 
-        if self.param.param['controlParameters']['benchmark'] == False:
-            if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
-                self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['methanol']['minimumAmountOpt']), "Minimum amount methanol produced")    
-            else:
-                self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['methanol']['sameAmountBenchmark']*1.01), "Amount methanol produced is same as benchmark upper bound") 
-                self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['methanol']['sameAmountBenchmark']), "Amount methanol produced is same as benchmark lower bound")    
-                self.m.addConstr(
-                    (gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) <= self.param.param['methane']['sameAmountVolumeBenchmark']*1.01), "Amount methane (volume) produced is same as benchmark upper bound")    
-                self.m.addConstr(
-                    (gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) >= self.param.param['methane']['sameAmountVolumeBenchmark']), "Amount methane (volume) produced is same as benchmark lower bound") 
-
+        #iMinNumOP = 1
+        #iMaxNumOccuranceOneOP = math.floor(self.param.param['controlParameters']['optimizationHorizon'] / iMinNumOP)
+        #self.m.addConstrs(
+        #    (self.OptVarOperationPointABSDES.sum('*',j) <= iMaxNumOccuranceOneOP for j in cm.arrOperationPointsABSDES), "Maximum of X Occurances of one OP")
+          
+                
         if self.param.param['controlParameters']['benchmark'] == True:
             # Minimum amount of methanol which has to be produced
             self.m.addConstr(
-                (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['methanol']['minimumAmountBenchmark']), "Minimum amount methanol produced benchmark")
+                (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
             # The same operation point for absorption and desorption for every time step
             self.m.addConstrs(
                 (self.OptVarOperationPointABSDES[(t-1,j)] == self.OptVarOperationPointABSDES[(t,j)] for t in self.arrTime[2:] for j in cm.arrOperationPointsABSDES), "Benchmark operation point absorption, desorption and methanolsynthesis")
@@ -126,10 +159,38 @@ class Optimization_Model():
             self.m.addConstrs(
                 (self.OptVarPowerElectrolyser[(t-1,n)] == self.OptVarPowerElectrolyser[(t,n)] for t in self.arrTime[2:] for n in elec.arrEnapterModules), "Benchmark power electrolyser")
             self.m.addConstrs(
-                (self.OptVarElectrolyserMode[(t-1,n,m)] == self.OptVarElectrolyserMode[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
+                (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
 
-            
+
         if self.param.param['controlParameters']['benchmark'] == False:
+            if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
+
+                print(self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval'])
+                print(self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:])
+                print("#########")
+                if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
+                    self.m.addConstr(
+                        (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) 
+                        - gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
+                
+                self.m.addConstr(
+                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']), "Minimum amount methanol produced 2")     
+            
+            else:
+                self.m.addConstr(
+                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
+                self.m.addConstr(
+                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['methanol']), "Amount methanol produced is same as benchmark lower bound")    
+                self.m.addConstr(
+                    (gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) <= self.param.param['production']['methaneVolume']*1.01), "Amount methane (volume) produced is same as benchmark upper bound")    
+                self.m.addConstr(
+                    (gp.quicksum(cm.volumeBiogasOut[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) >= self.param.param['production']['methaneVolume']), "Amount methane (volume) produced is same as benchmark lower bound") 
+                self.m.addConstr(
+                    (gp.quicksum(cm.volumeBiogasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) <= self.param.param['production']['biogasVolume']*1.01), "Amount biogas (volume) used is same as benchmark upper bound")    
+                self.m.addConstr(
+                    (gp.quicksum(cm.volumeBiogasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) >= self.param.param['production']['biogasVolume']), "Amount biogas(volume) used is same as benchmark lower bound") 
+
+
             if self.param.param['controlParameters']['transitionConstraints'] == True:
                 ## Minimum stay time per mode constraints
                 self.m.addConstrs(
@@ -139,10 +200,17 @@ class Optimization_Model():
                 self.m.addConstrs(
                     (gp.quicksum(self.OptVarOperationPointDIS[(i,j)] for i in self.arrTime[t:t+self.param.param['constraints']['transitionTimes']['minimumStayTimeDIS']] for j in cm.arrOperationPointsDIS[1:]) >= self.OptVarOperationPointSwitch[(t,3)]*self.param.param['constraints']['transitionTimes']['minimumStayTimeDIS'] for t in self.arrTime[1:]), "Mode switching minimum stay constraint DIS")
                 
+                self.m.addConstrs(
+                    (gp.quicksum(self.OptVarOperationPointABSDES[(i,0)] for i in self.arrTime[t:t+self.param.param['constraints']['transitionTimes']['minimumStayTimeStopABSDES']]) >= self.OptVarOperationPointSwitch[(t,4)]*self.param.param['constraints']['transitionTimes']['minimumStayTimeStopABSDES'] for t in self.arrTime[2:]), "Mode switching minimum stay constraint ABSDES 2")
+                self.m.addConstrs(
+                    (gp.quicksum(self.OptVarOperationPointMEOHSYN[(i,0)] for i in self.arrTime[t:t+self.param.param['constraints']['transitionTimes']['minimumStayTimeStopMEOHSYN']]) >= self.OptVarOperationPointSwitch[(t,5)]*self.param.param['constraints']['transitionTimes']['minimumStayTimeStopMEOHSYN'] for t in self.arrTime[2:]), "Mode switching minimum stay constraint MEOHSYN 2")
+                self.m.addConstrs(
+                    (gp.quicksum(self.OptVarOperationPointDIS[(i,0)] for i in self.arrTime[t:t+self.param.param['constraints']['transitionTimes']['minimumStayTimeStopDIS']]) >= self.OptVarOperationPointSwitch[(t,6)]*self.param.param['constraints']['transitionTimes']['minimumStayTimeStopDIS'] for t in self.arrTime[2:]), "Mode switching minimum stay constraint DIS 2")
+
                 
                 ## Maximum stay time per mode constraints
                 self.m.addConstrs(
-                    ((1 - gp.quicksum(self.OptVarOperationPointABSDES[(t+self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'],j)] for j in cm.arrOperationPointsABSDES[1:])) >= self.OptVarOperationPointSwitch[(t,1)] - gp.quicksum(self.OptVarOperationPointABSDES[(t+i,0,0)] for i in range(self.param.param['constraints']['transitionTimes']['minimumStayTimeABSDES'],self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'])) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'])]), "Mode switching maximum stay constraint mode ABSDES")
+                    ((1 - gp.quicksum(self.OptVarOperationPointABSDES[(t+self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'],j)] for j in cm.arrOperationPointsABSDES[1:])) >= self.OptVarOperationPointSwitch[(t,1)] - gp.quicksum(self.OptVarOperationPointABSDES[(t+i,0)] for i in range(self.param.param['constraints']['transitionTimes']['minimumStayTimeABSDES'],self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'])) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maximumStayTimeABSDES'])]), "Mode switching maximum stay constraint mode ABSDES")
                 self.m.addConstrs(
                     ((1 - gp.quicksum(self.OptVarOperationPointMEOHSYN[(t+self.param.param['constraints']['transitionTimes']['maximumStayTimeMEOHSYN'],j)] for j in cm.arrOperationPointsMEOHSYN[1:])) >= self.OptVarOperationPointSwitch[(t,2)] - gp.quicksum(self.OptVarOperationPointMEOHSYN[(t+i,0)] for i in range(self.param.param['constraints']['transitionTimes']['minimumStayTimeMEOHSYN'],self.param.param['constraints']['transitionTimes']['maximumStayTimeMEOHSYN'])) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maximumStayTimeMEOHSYN'])]), "Mode switching maximum stay constraint mode MEOHSYN")
                 self.m.addConstrs(
@@ -150,6 +218,7 @@ class Optimization_Model():
 
 
             ## Mode switching constraints
+            # ABSDES from stop to start
             self.m.addConstrs(
                 (self.OptVarOperationPointABSDES[(t-1,0)] >= self.OptVarOperationPointSwitch[(t,1)] for t in self.arrTime[1:]), "Mode switching ABSDES 1")
             self.m.addConstrs(
@@ -157,6 +226,7 @@ class Optimization_Model():
             self.m.addConstrs(
                 (self.OptVarOperationPointABSDES[(t-1,0)] + gp.quicksum(self.OptVarOperationPointABSDES[(t,j)] for j in cm.arrOperationPointsABSDES[1:]) - 1 <= self.OptVarOperationPointSwitch[(t,1)] for t in self.arrTime[1:]), "Mode switching ABSDES 3")
 
+            # MEOHSYN from stop to start
             self.m.addConstrs(
                 (self.OptVarOperationPointMEOHSYN[(t-1,0)] >= self.OptVarOperationPointSwitch[(t,2)] for t in self.arrTime[1:]), "Mode switching MEOHSYN 1")
             self.m.addConstrs(
@@ -164,12 +234,40 @@ class Optimization_Model():
             self.m.addConstrs(
                 (self.OptVarOperationPointMEOHSYN[(t-1,0)] + gp.quicksum(self.OptVarOperationPointMEOHSYN[(t,j)] for j in cm.arrOperationPointsMEOHSYN[1:]) - 1 <= self.OptVarOperationPointSwitch[(t,2)] for t in self.arrTime[1:]), "Mode switching MEOHSYN 3")
 
+            # DIS from stop to start
             self.m.addConstrs(
                 (self.OptVarOperationPointDIS[(t-1,0)] >= self.OptVarOperationPointSwitch[(t,3)] for t in self.arrTime[1:]), "Mode switching DIS 1")
             self.m.addConstrs(
                 (gp.quicksum(self.OptVarOperationPointDIS[(t,j)] for j in cm.arrOperationPointsDIS[1:]) >= self.OptVarOperationPointSwitch[(t,3)] for t in self.arrTime[0:]), "Mode switching DIS 2")
             self.m.addConstrs(
                 (self.OptVarOperationPointDIS[(t-1,0)] + gp.quicksum(self.OptVarOperationPointDIS[(t,j)] for j in cm.arrOperationPointsDIS[1:]) - 1 <= self.OptVarOperationPointSwitch[(t,3)] for t in self.arrTime[1:]), "Mode switching DIS 3")
+
+
+
+            # ABSDES from start to stop
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointABSDES[(t-1,j)] for j in cm.arrOperationPointsABSDES[1:]) >= self.OptVarOperationPointSwitch[(t,4)] for t in self.arrTime[2:]), "Mode switching ABSDES 4")
+            self.m.addConstrs(
+                (self.OptVarOperationPointABSDES[(t,0)] >= self.OptVarOperationPointSwitch[(t,4)] for t in self.arrTime[1:]), "Mode switching ABSDES 5")
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointABSDES[(t-1,j)] for j in cm.arrOperationPointsABSDES[1:]) + self.OptVarOperationPointABSDES[(t,0)] - 1 <= self.OptVarOperationPointSwitch[(t,4)] for t in self.arrTime[2:]), "Mode switching ABSDES 6")
+
+            # MEOHSYN from start to stop
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointMEOHSYN[(t-1,j)] for j in cm.arrOperationPointsMEOHSYN[1:]) >= self.OptVarOperationPointSwitch[(t,5)] for t in self.arrTime[2:]), "Mode switching MEOHSYN 4")
+            self.m.addConstrs(
+                (self.OptVarOperationPointMEOHSYN[(t,0)] >= self.OptVarOperationPointSwitch[(t,5)] for t in self.arrTime[1:]), "Mode switching MEOHSYN 5")
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointMEOHSYN[(t-1,j)] for j in cm.arrOperationPointsMEOHSYN[1:]) + self.OptVarOperationPointMEOHSYN[(t,0)] - 1 <= self.OptVarOperationPointSwitch[(t,5)] for t in self.arrTime[2:]), "Mode switching MEOHSYN 6")
+
+            # DIS from start to stop
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointDIS[(t-1,j)] for j in cm.arrOperationPointsDIS[1:]) >= self.OptVarOperationPointSwitch[(t,6)] for t in self.arrTime[2:]), "Mode switching DIS 4")
+            self.m.addConstrs(
+                (self.OptVarOperationPointDIS[(t,0)] >= self.OptVarOperationPointSwitch[(t,6)] for t in self.arrTime[1:]), "Mode switching DIS 5")
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarOperationPointDIS[(t-1,j)] for j in cm.arrOperationPointsDIS[1:]) + self.OptVarOperationPointDIS[(t,0)] - 1 <= self.OptVarOperationPointSwitch[(t,6)] for t in self.arrTime[2:]), "Mode switching DIS 6")
+
 
         ## PV considered
         if self.param.param['controlParameters']['considerPV'] == False:
@@ -190,13 +288,12 @@ class Optimization_Model():
                 self.OptVarPowerOutBatterySold[t] == 0 for t in self.arrTime)
             
         ## Power Constraints
-
         if self.param.param['controlParameters']['uncertaintyPP'] == True:
             # power from battery and PV and grid to electrolyser and components must equal to needed power
             self.m.addConstrs(
                 (self.OptVarPowerOutBattery[t,r] + self.OptVarUsageOfPV[t] + self.OptVarPowerBought[t,r] - self.OptVarPowerInBatteryBought[t,r] == (
-                gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarElectrolyserMode[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
-                + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarElectrolyserMode[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
+                gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
+                + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarModeElectrolyser[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
                 + gp.quicksum(cm.powerPlantComponentsUnit1[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
                 + gp.quicksum(cm.powerPlantComponentsUnit2[(j)] * self.OptVarOperationPointMEOHSYN[(t,j)] * fTimeStep for j in cm.arrOperationPointsMEOHSYN)
                 + gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS))
@@ -233,8 +330,8 @@ class Optimization_Model():
             # power from battery and PV and grid to electrolyser and components must equal to needed power
             self.m.addConstrs(
                 (self.OptVarPowerOutBattery[t] + self.OptVarUsageOfPV[t] + self.OptVarPowerBought[t] - self.OptVarPowerInBatteryBought[t] == (
-                gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarElectrolyserMode[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
-                + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarElectrolyserMode[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
+                gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
+                + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarModeElectrolyser[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
                 + gp.quicksum(cm.powerPlantComponentsUnit1[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
                 + gp.quicksum(cm.powerPlantComponentsUnit2[(j)] * self.OptVarOperationPointMEOHSYN[(t,j)] * fTimeStep for j in cm.arrOperationPointsMEOHSYN)
                 + gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS))
@@ -271,28 +368,27 @@ class Optimization_Model():
         # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV
         if self.param.param['controlParameters']['uncertaintyPV'] == True:
             self.m.addConstrs(
-                (self.OptVarUsageOfPV[i] + self.OptVarPowerInBatteryPV[i] <= pv.pvSamples[r,i] + 1000*(1-self.OptVarIndicatorPV[r]) for i in self.arrTime[1:] for r in range(0,pv.iNumberUncertaintySamples)), "PV upper bound available")
+                (self.OptVarUsageOfPV[i] + self.OptVarPowerInBatteryPV[i] <= pv.arrPvSamples[r,i] + 1000*(1-self.OptVarIndicatorPV[r]) for i in self.arrTime[1:] for r in range(0,pv.iNumberUncertaintySamples)), "PV upper bound available")
             self.m.addConstr(
-                (gp.quicksum(self.OptVarIndicatorPV[r] for r in range(0,pv.iNumberUncertaintySamples)) >= pv.alpha*pv.iNumberUncertaintySamples), 'Indicator PV')
+                (gp.quicksum(self.OptVarIndicatorPV[r] for r in range(0,pv.iNumberUncertaintySamples)) >= pv.fAlpha*pv.iNumberUncertaintySamples), 'Indicator PV')
         else:
             self.m.addConstrs(
                 (self.OptVarUsageOfPV[i] + self.OptVarPowerInBatteryPV[i] <= pv.arrPowerAvailable[i] for i in self.arrTime[1:]), "PV upper bound available")
-
-
+        
 
         ## Minimum operation point/operation mode constraint
         # Exactly one operation point for absorption, desorption and methanol synthesis has to be selected in every time step
         self.m.addConstrs(
-            (self.OptVarOperationPointABSDES.sum(t,'*','*') == 1.0 for t in self.arrTime), "Exactly one operation point for absorption, desorption and methanol synthesis per time step")
+            (self.OptVarOperationPointABSDES.sum(t,'*') == 1 for t in self.arrTime), "Exactly one operation point for absorption, desorption and methanol synthesis per time step")
         # Exactly one operation point for methanol synthesis has to be selected every time step
         self.m.addConstrs(
-            (self.OptVarOperationPointMEOHSYN.sum(t,'*') == 1.0 for t in self.arrTime), "Exactly one operation point for methanol synthesis per time step")
+            (self.OptVarOperationPointMEOHSYN.sum(t,'*') == 1 for t in self.arrTime), "Exactly one operation point for methanol synthesis per time step")
         # Exactly one operation point for distillation has to be selected in every time step
         self.m.addConstrs(
-            (self.OptVarOperationPointDIS.sum(t,'*') == 1.0 for t in self.arrTime), "Exactly one operation point for distillation per time step")
+            (self.OptVarOperationPointDIS.sum(t,'*') == 1 for t in self.arrTime), "Exactly one operation point for distillation per time step")
         # Exactly one operation point for electrolyser has to be selected in every time step
         self.m.addConstrs(
-            (gp.quicksum(self.OptVarElectrolyserMode[(t,n,m)] for m in elec.arrModes) == 1 for t in self.arrTime for n in elec.arrEnapterModules), "one operation mode for electrolyser per time period")
+            (gp.quicksum(self.OptVarModeElectrolyser[(t,n,m)] for m in elec.arrModes) == 1 for t in self.arrTime for n in elec.arrEnapterModules), "one operation mode for electrolyser per time period")
 
 
         ## Initial time step constraints
@@ -307,7 +403,7 @@ class Optimization_Model():
             (self.OptVarOperationPointDIS[(0,0)] == 1), "No operation point for distillation in initial time step")
         # No power in electrolyser in initial time step
         self.m.addConstrs(
-            (self.OptVarElectrolyserMode[(0,n,2)] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
+            (self.OptVarModeElectrolyser[(0,n,2)] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
         # No input or output for battery in first time step
         self.m.addConstr(
             (self.OptVarPowerInBatteryPV[0] == 0), "PV in battery initial time step")
@@ -328,63 +424,107 @@ class Optimization_Model():
                 (self.OptVarPowerOutBatterySold[0] == 0), "power sold battery initial time step")
 
 
-
         ## Electrolyser constraints
         self.m.addConstrs(
-            (self.OptVarElectrolyserMode[(t-1,n,0)] <= self.OptVarElectrolyserMode[(t,n,3)] for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
+            (self.OptVarModeElectrolyser[(t-1,n,0)] <= self.OptVarModeElectrolyser[(t,n,3)] for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
         self.m.addConstrs(
-            (self.OptVarElectrolyserMode[(t-1,n,1)] <= gp.quicksum(self.OptVarElectrolyserMode[(t,n,m)] for m in [2,3]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
+            (self.OptVarModeElectrolyser[(t-1,n,1)] <= gp.quicksum(self.OptVarModeElectrolyser[(t,n,m)] for m in [2,3]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
         self.m.addConstrs(
-            (self.OptVarElectrolyserMode[(t-1,n,2)] <= gp.quicksum(self.OptVarElectrolyserMode[(t,n,m)] for m in [0,2]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
+            (self.OptVarModeElectrolyser[(t-1,n,2)] <= gp.quicksum(self.OptVarModeElectrolyser[(t,n,m)] for m in [0,2]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
         self.m.addConstrs(
-            (self.OptVarElectrolyserMode[(t-1,n,3)] <= gp.quicksum(self.OptVarElectrolyserMode[(t,n,m)] for m in [1,2,3]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
+            (self.OptVarModeElectrolyser[(t-1,n,3)] <= gp.quicksum(self.OptVarModeElectrolyser[(t,n,m)] for m in [1,2,3]) for t in self.arrTime[1:] for n in elec.arrEnapterModules), "Electrolyser after off comes off or ramp-up")
+        
 
 
         ## Hydrogen storage constraints
+        electrolyser_constant = self.param.param['electrolyser']['constant'] * fTimeStep
+        R_H2_Tamb_T0 = self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0'])
+        storage_volume_factor = 1 / (self.param.param['storageH2']['Volume'] * 100000)
+
+        electrolyser_sum = 0
+        hydrogen_in_sum = 0
+        additional_hydrogen_sum = 0
+        
+        for t in self.arrTime:
+        # Precompute constant terms
+
+            # Calculate intermediate expressions
+            electrolyser_sum = electrolyser_sum + gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * electrolyser_constant for n in elec.arrEnapterModules)
+            hydrogen_in_sum = hydrogen_in_sum + gp.quicksum(cm.massFlowHydrogenIn[j] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
+            additional_hydrogen_sum = additional_hydrogen_sum + gp.quicksum(cm.massFlowAdditionalHydrogen[j] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
+
+            # Create the constraint
+            self.m.addConstr(
+                (self.param.param['storageH2']['InitialFilling'] + electrolyser_sum - hydrogen_in_sum - additional_hydrogen_sum) * R_H2_Tamb_T0 * storage_volume_factor <= self.param.param['storageH2']['UpperBound'], f"Storage H2 upper bound at time {t}")
+        
+            self.m.addConstr(
+                (self.param.param['storageH2']['InitialFilling'] + electrolyser_sum - hydrogen_in_sum - additional_hydrogen_sum) * R_H2_Tamb_T0 * storage_volume_factor >= self.param.param['storageH2']['LowerBound'], f"Storage H2 lower bound at time {t}")
+        
+        """
         self.m.addConstrs(
             ((self.param.param['storageH2']['InitialFilling'] 
-                + gp.quicksum(self.OptVarPowerElectrolyser[(l,n)] * self.OptVarElectrolyserMode[(l,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:t+1] for n in elec.arrEnapterModules)
+                + gp.quicksum(self.OptVarPowerElectrolyser[(l,n)] * self.OptVarModeElectrolyser[(l,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:t+1] for n in elec.arrEnapterModules)
                 - gp.quicksum(cm.massFlowHydrogenIn[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1]) 
                 - gp.quicksum(cm.massFlowAdditionalHydrogen[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1])) 
-                * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000) <= self.param.param['storageH2']['UpperBound'] for t in self.arrTime), "Storage H2 upper bound")
+                * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000) <= self.param.param['storageH2']['UpperBound'] for t in self.arrTime), "Storage H2 upper bound")        
         self.m.addConstrs(
             ((self.param.param['storageH2']['InitialFilling'] 
-                + gp.quicksum(self.OptVarPowerElectrolyser[(l,n)] * self.OptVarElectrolyserMode[(l,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:t+1] for n in elec.arrEnapterModules)
+                + gp.quicksum(self.OptVarPowerElectrolyser[(l,n)] * self.OptVarModeElectrolyser[(l,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:t+1] for n in elec.arrEnapterModules)
                 - gp.quicksum(cm.massFlowHydrogenIn[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1]) 
                 - gp.quicksum(cm.massFlowAdditionalHydrogen[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1])) 
                 * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000) >= self.param.param['storageH2']['LowerBound'] for t in self.arrTime), "Storage H2 lower bound")
+        """
         self.m.addConstr(
             ((self.param.param['storageH2']['InitialFilling'] * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000)) -
-                (self.param.param['storageH2']['InitialFilling'] + gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarElectrolyserMode[(t,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for t in self.arrTime for n in elec.arrEnapterModules)
+                (self.param.param['storageH2']['InitialFilling'] + gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for t in self.arrTime for n in elec.arrEnapterModules)
                 - gp.quicksum(cm.massFlowHydrogenIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) 
                 - gp.quicksum(cm.massFlowAdditionalHydrogen[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime)) 
                 * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000) <= self.param.param['constraints']['hydrogenStorageFillEqual']['UpperBound']), "Storage H2 equal filling upper bound")
         self.m.addConstr(
             ((self.param.param['storageH2']['InitialFilling'] * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000)) -
-                (self.param.param['storageH2']['InitialFilling'] + gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarElectrolyserMode[(t,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for t in self.arrTime for n in elec.arrEnapterModules)
+                (self.param.param['storageH2']['InitialFilling'] + gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * self.param.param['electrolyser']['constant'] * fTimeStep for t in self.arrTime for n in elec.arrEnapterModules)
                 - gp.quicksum(cm.massFlowHydrogenIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime) 
                 - gp.quicksum(cm.massFlowAdditionalHydrogen[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime)) 
                 * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000) >= self.param.param['constraints']['hydrogenStorageFillEqual']['LowerBound']), "Storage H2 equal filling lower bound")
 
-
+        
         ## Methanol water storage constraints
+        methanol_water_mass_flow_in = 0
+        methanol_water_mass_flow_out = 0
+        
+        for t in self.arrTime:
+        # Precompute constant terms
+
+            # Calculate intermediate expressions
+            methanol_water_mass_flow_in = methanol_water_mass_flow_in + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN) 
+            methanol_water_mass_flow_out = methanol_water_mass_flow_out + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN) 
+
+            # Create the constraint
+            self.m.addConstr(
+                self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}")
+        
+            self.m.addConstr(
+                self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
+        
+        """
         self.m.addConstrs(
             ((self.param.param['storageMethanolWater']['InitialFilling'] 
                 + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(l,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:t+1]) 
                 - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(l,i)] * fTimeStep for i in cm.arrOperationPointsDIS for l in self.arrTime[0:t+1])) >= self.param.param['storageMethanolWater']['LowerBound'] for t in self.arrTime), "Storage methanol water lower bound")
         self.m.addConstrs(
             ((self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / cm.densityMethanolWaterStorageInSynthesis[(i)] * self.OptVarOperationPointMEOHSYN[(l,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:t+1])  
+                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(l,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:t+1])  
                 - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(l,i)] * fTimeStep for i in cm.arrOperationPointsDIS for l in self.arrTime[0:t+1])) <= self.param.param['storageMethanolWater']['UpperBound'] for t in self.arrTime), "Storage methanol water upper bound")
+        """
         self.m.addConstr(
             (self.param.param['storageMethanolWater']['InitialFilling'] - 
             (self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / cm.densityMethanolWaterStorageInSynthesis[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for t in self.arrTime)  
+                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for t in self.arrTime)  
                 - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,i)] * fTimeStep for i in cm.arrOperationPointsDIS for t in self.arrTime)) <= self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']), "Storage methanol water equal filling upper bound")
         self.m.addConstr(
             (self.param.param['storageMethanolWater']['InitialFilling'] - 
             (self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / cm.densityMethanolWaterStorageInSynthesis[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for t in self.arrTime)  
+                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for t in self.arrTime)  
                 - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(i)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,i)] * fTimeStep for i in cm.arrOperationPointsDIS for t in self.arrTime))  >= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage methanol water equal filling lower bound")
 
 
@@ -451,7 +591,41 @@ class Optimization_Model():
                 - gp.quicksum(self.OptVarPowerOutBattery[t] for t in self.arrTime)
                 - gp.quicksum(self.OptVarPowerOutBatterySold[t] for t in self.arrTime)) >= self.param.param['constraints']['batteryChargeEqual']['LowerBound']), "Battery equal charge lower bound")
 
+
+        """
+        self.m.addConstrs(
+            (gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
+            - gp.quicksum(cm.massFlowSynthesisgasOut[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN)
+            >= -0.05 for t in self.arrTime), "No synthesis gas storage 1")
+        self.m.addConstrs(
+            (gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
+            - gp.quicksum(cm.massFlowSynthesisgasOut[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN)
+            <= 0.05 for t in self.arrTime), "No synthesis gas storage 2")
+        """
+
+        
         ## Synthesisgas storage
+        R_Syn_Tamb_T0 = self.param.param['R_Synthesisgas'] * (self.param.param['Tamb'] + self.param.param['T0'])
+        storage_volume_factor = 1 / (self.param.param['storageSynthesisgas']['Volume'] * 100000)
+
+        synthesis_gas_in = 0
+        synthesis_gas_out = 0
+        
+        for t in self.arrTime:
+        # Precompute constant terms
+
+            # Calculate intermediate expressions
+            synthesis_gas_in = synthesis_gas_in + gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)
+            synthesis_gas_out = synthesis_gas_out + gp.quicksum(cm.massFlowSynthesisgasOut[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN)
+
+            # Create the constraint
+            self.m.addConstr(
+                (self.param.param['storageSynthesisgas']['InitialFilling']  + synthesis_gas_in - synthesis_gas_out) * R_Syn_Tamb_T0 * storage_volume_factor <= self.param.param['storageSynthesisgas']['UpperBound'], f"Storage synthesis gas upper bound at time {t}")
+        
+            self.m.addConstr(
+                (self.param.param['storageSynthesisgas']['InitialFilling']  + synthesis_gas_in - synthesis_gas_out) * R_Syn_Tamb_T0 * storage_volume_factor >= self.param.param['storageSynthesisgas']['LowerBound'], f"Storage synthesis gas lower bound at time {t}")
+
+        """
         self.m.addConstrs(
             ((self.param.param['storageSynthesisgas']['InitialFilling'] 
                 + gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1])
@@ -462,6 +636,7 @@ class Optimization_Model():
                 + gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(l,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:t+1])
                 - gp.quicksum(cm.massFlowSynthesisgasOut[(i)] * self.OptVarOperationPointMEOHSYN[(l,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:t+1])) 
                 * self.param.param['R_Synthesisgas'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageSynthesisgas']['Volume'] * 100000) <= self.param.param['storageSynthesisgas']['UpperBound'] for t in self.arrTime), "Storage synthesis gas upper bound")
+        """
         self.m.addConstr(
             ((self.param.param['storageSynthesisgas']['InitialFilling']  * self.param.param['R_Synthesisgas'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageSynthesisgas']['Volume'] * 100000)) - 
                 (self.param.param['storageSynthesisgas']['InitialFilling']  
@@ -474,9 +649,8 @@ class Optimization_Model():
                 + gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES for t in self.arrTime)
                 - gp.quicksum(cm.massFlowSynthesisgasOut[(i)] * self.OptVarOperationPointMEOHSYN[(t,i)] * fTimeStep for i in cm.arrOperationPointsMEOHSYN for t in self.arrTime))
                 * self.param.param['R_Synthesisgas'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageSynthesisgas']['Volume'] * 100000)  >= self.param.param['constraints']['synthesisgasStorageFillEqual']['LowerBound']), "Storage synthesis gas equal filling lower bound")
-
-            
-
+        
+    
         ## Production constraints
         # Minimum amount of methane in outflowing biogas
         self.m.addConstrs(
@@ -506,6 +680,6 @@ class Optimization_Model():
 
             # Absorption/Desorption (mass flow methanol water in cycle)
             self.m.addConstrs(
-                ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)) >= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleUpwardBound'] * fTimeStep for t in self.arrTime[1:]), "Operation point change absorption/desorption upward bound")
+                ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) >= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleUpwardBound'] * fTimeStep for t in self.arrTime[2:]), "Operation point change absorption/desorption upward bound")
             self.m.addConstrs(
-                ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES)) <= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleDownwardBound'] * fTimeStep for t in self.arrTime[1:]), "Operation point change absorption/desorption downward bound")
+                ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) <= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleDownwardBound'] * fTimeStep for t in self.arrTime[2:]), "Operation point change absorption/desorption downward bound")

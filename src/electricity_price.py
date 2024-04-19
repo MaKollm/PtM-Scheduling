@@ -24,16 +24,16 @@ class PowerPrice():
         self.arrPowerPriceHourly = []
 
         # Energy price
-        DataFrameEnergyCharts = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie\energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2022.xlsx')
+        DataFrameEnergyCharts = pd.read_excel(self.param.param['controlParameters']['pathPPData'] + "\energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2022.xlsx")
         arrEnergyCharts = DataFrameEnergyCharts.to_numpy()
     
         self.arrPowerPriceHourlyAll = arrEnergyCharts[1:,4] / 1000
-        self.funcUpdate(param, 0)
+        #self.funcUpdate(param, 0)
 
 
     def funcUpdate(self, param, iteration):
         self.param = param
-        self.iStart = self.iStartInit + 24*7*iteration
+        self.iStart = self.iStartInit + self.param.param['controlParameters']['numHoursToSimulate']*iteration#24*7*iteration#25#iteration
         self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
 
         self.arrPowerPriceHourly = []
@@ -41,6 +41,10 @@ class PowerPrice():
 
         for i in range(self.iStart, self.iStop):
             self.arrPowerPriceHourly.append(self.arrPowerPriceHourlyAll[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))])
+
+        #x = list(range(0,len(self.arrPowerPriceHourly)))
+        #plt.plot(x,self.arrPowerPriceHourly,'-b',linewidth=2)
+        #plt.show()
 
         self.funcAddUncertainty()
         self.iNumberUncertaintySamples = self.param.param['prices']['numberOfUncertaintySamples']

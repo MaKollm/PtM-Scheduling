@@ -34,13 +34,13 @@ class PV():
         self.fCovValue = self.param.param['pv']['covariance']
 
         self.funcCreateData()
-        self.funcUpdate(param, 0)
+        #self.funcUpdate(param, 0)
 
 
     def funcUpdate(self, param, iteration):
         self.param = param
 
-        self.iStart = self.iStartInit + 24*7*iteration
+        self.iStart = self.iStartInit + self.param.param['controlParameters']['numHoursToSimulate']*iteration#24*7*iteration#25#iteration
         self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
 
         self.arrPowerAvailable = []
@@ -61,8 +61,8 @@ class PV():
     def funcCreateData(self):
 
         # Weather
-        global_2020 = pd.read_csv(r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV\pvgis_global_2020.csv', skiprows=8, nrows = 8784,index_col=0)
-        components_2020 = pd.read_csv(r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV\pvgis_components_2020.csv', skiprows=8, nrows = 8784,index_col=0)
+        global_2020 = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_global_2020.csv", skiprows=8, nrows = 8784,index_col=0)
+        components_2020 = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_components_2020.csv", skiprows=8, nrows = 8784,index_col=0)
     
 
         poa_data_2020 = pd.DataFrame(columns=[
@@ -76,7 +76,7 @@ class PV():
         poa_data_2020['wind_speed'] = components_2020['WS10m']
         poa_data_2020.index = pd.to_datetime(poa_data_2020.index, format="%Y%m%d:%H%M")
         
-        poa_data_2020.to_csv('C:/PROJEKTE/PTX/Max/50_Daten/05_PV/poa_data_2020.csv')
+        poa_data_2020.to_csv(self.param.param['controlParameters']['pathPVData'] + "poa_data_2020.csv")
 
         # PV
         location = Location(latitude=49.09, longitude=8.44,tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
@@ -96,7 +96,7 @@ class PV():
         
         modelChain = ModelChain(system, location)
 
-        poa_data_2020_Used = pd.read_csv(r'C:/PROJEKTE/PTX/Max/50_Daten/05_PV/poa_data_2020.csv', index_col=0)
+        poa_data_2020_Used = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data_2020.csv", index_col=0)
         poa_data_2020_Used.index = pd.to_datetime((poa_data_2020.index))
 
         modelChain.run_model_from_poa(poa_data_2020_Used)

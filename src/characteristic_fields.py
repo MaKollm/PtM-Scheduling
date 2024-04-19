@@ -41,18 +41,17 @@ class CharMap():
         self.iIndexMassFlowMethanolWaterStorageOut =  self.param.param['charMap']['MEOHSYN']['index']['massFlowMethanolWaterStorageOut']
         self.iIndexMassFlowMethanolOut =  self.param.param['charMap']['MEOHSYN']['index']['massFlowMethanolOut']
         self.iIndexPowerPlantComponentsUnit3 =  self.param.param['charMap']['MEOHSYN']['index']['powerPlantComponentsUnit3']
-
     
 
     def funcUpdate(self):
         self.funcSetCharMapsOutput()
 
 
-    def funcCreateCharacteristicMaps(self):
+    def funcCreateCharacteristicMaps(self, pathToCharMapData):
         ## Base data
-        dataFrameCharMapAbsorptionDesorptionMethanolsynthesis = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\AbsorptionDesorption_MethanolSynthese.xlsx')
-        dataFrameCharMapMethanolsynthesis = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\MethanolSynthese.xlsx')
-        dataFrameCharMapDistillation = pd.read_excel(r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\Distillation.xlsx')
+        dataFrameCharMapAbsorptionDesorptionMethanolsynthesis = pd.read_excel(pathToCharMapData + "\AbsorptionDesorption_MethanolSynthese.xlsx")
+        dataFrameCharMapMethanolsynthesis = pd.read_excel(pathToCharMapData + "\MethanolSynthese.xlsx")
+        dataFrameCharMapDistillation = pd.read_excel(pathToCharMapData + "\Distillation.xlsx")
         arrCharMapAbsorptionDesorptionMethanolsynthesis = dataFrameCharMapAbsorptionDesorptionMethanolsynthesis.to_numpy()
         arrCharMapMethanolsynthesis = dataFrameCharMapMethanolsynthesis.to_numpy()
         arrCharMapDistillation = dataFrameCharMapDistillation.to_numpy()
@@ -61,14 +60,17 @@ class CharMap():
         self.arrOperationPointsMEOHSYN = []
         self.arrOperationPointsDIS = []
 
+        """
         #self.arrOperationPointsABSDES.append(0)
         for i in range(0,arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[0]):
             if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionMethaneBiogasOut] >= self.param.param['constraints']['minMoleFractionCH4BiogasOut']:
                 if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionHydrogenSynthesisgas] / arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionCarbondioxideSynthesisgas] >= self.param.param['constraints']['minRatioH2_CO2_Synthesisgas']:
                     if arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionHydrogenSynthesisgas] / arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMoleFractionCarbondioxideSynthesisgas] <= self.param.param['constraints']['maxRatioH2_CO2_Synthesisgas']:
                         self.arrOperationPointsABSDES.append(i)
+        """
 
-    
+        for i in range(0,arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[0]):
+            self.arrOperationPointsABSDES.append(i)
 
         for i in range(0,arrCharMapMethanolsynthesis.shape[0]):
             self.arrOperationPointsMEOHSYN.append(i)
@@ -88,26 +90,22 @@ class CharMap():
 
         # Hydrogen in ABSDES
         self.arrOperationPointsConversionToRealInputValues.append([])
-        self.arrOperationPointsConversionToRealInputValues[0].append(0)
         for i in range(0,arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[0]):
             self.arrOperationPointsConversionToRealInputValues[0].append(arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMassFlowHydrogenIn])
 
         # Biogas in ABSDES
         self.arrOperationPointsConversionToRealInputValues.append([])
-        self.arrOperationPointsConversionToRealInputValues[1].append(0)
         for i in range(0,arrCharMapAbsorptionDesorptionMethanolsynthesis.shape[0]):
             self.arrOperationPointsConversionToRealInputValues[1].append(arrCharMapAbsorptionDesorptionMethanolsynthesis[i,self.iIndexMassFlowBiogasIn])
 
         # Synthesisgas in MEOHSYN
         self.arrOperationPointsConversionToRealInputValues.append([])
-        self.arrOperationPointsConversionToRealInputValues[2].append(0)
         for i in range(0,arrCharMapMethanolsynthesis.shape[0]):
             self.arrOperationPointsConversionToRealInputValues[2].append(arrCharMapMethanolsynthesis[i,self.iIndexMassFlowSynthesisgasOut])   
 
         # Methanol water in DIS
         self.arrOperationPointsConversionToRealInputValues.append([])
-        self.arrOperationPointsConversionToRealInputValues[3].append(0)
-        for i in range(1,arrCharMapDistillation.shape[0]):
+        for i in range(0,arrCharMapDistillation.shape[0]):
            self.arrOperationPointsConversionToRealInputValues[3].append(arrCharMapDistillation[i,self.iIndexMassFlowSynthesisgasOut])   
 
 
@@ -172,7 +170,7 @@ class CharMap():
 
 
             self.arrCharMap[2][self.iLengthCharMapDIS+0][(i)] = fPowerPlantComponentsUnit3
-        print(self.arrCharMap[2])
+        
         ## Set variables
 
         self.funcSetCharMapsInputVariables()
@@ -191,6 +189,7 @@ class CharMap():
         self.arrBiogasInValuesConversion = self.arrOperationPointsConversionToRealInputValues[1]
         self.arrSynthesisgasInMethanolSynthesisValuesConversion = self.arrOperationPointsConversionToRealInputValues[2]
         self.arrMethanolWaterInDistillationValuesConversion = self.arrOperationPointsConversionToRealInputValues[3]
+
 
     def funcSetCharMapsOutput(self):
         self.massFlowHydrogenIn = self.arrCharMap[0][self.iIndexMassFlowHydrogenIn]
