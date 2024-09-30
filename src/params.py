@@ -35,14 +35,15 @@ class Param():
             self.strPathPVData = args[19]
             self.strPathPPData = args[20]
             self.strPathInitialData = args[21]
+            self.strPathAdaptationData = args[22]
         
 
     def funcUpdate(self, pv, pp, iteration):
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         
-        print("1:")
-        print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
+        #print("1:")
+        #print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
 
         if iteration > 0:
             self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
@@ -51,15 +52,15 @@ class Param():
             for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']+1):
                 self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + outputData['output']['massFlowMethanolOut'][0][0][0][i]
 
-                print("2:")
-                print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
+                #print("2:")
+                #print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
 
             if self.param['controlParameters']['currStartTimeLastOptHorizon'] >= self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['numTimeStepsToSimulate']:
                 self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
                 self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
 
-                print("3:")
-                print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
+                #print("3:")
+                #print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
 
                 self.param['battery']['initialCharge'] = outputData['output']['batteryCharge'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
                 self.param['storageMethanolWater']['InitialFilling'] = outputData['output']['storageMethanolWaterFilling'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
@@ -68,9 +69,9 @@ class Param():
                 self.param['storageSynthesisgas']['InitialPressure'] = outputData['output']['storageSynthesisgasPressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
                 self.param['storageSynthesisgas']['InitialFilling'] = self.param['storageSynthesisgas']['InitialPressure']*100000*self.param['storageSynthesisgas']['Volume'] / (self.param['R_Synthesisgas']*(self.param['Tamb'] + self.param['T0']))
 
-        print("###########")
-        print(self.param['controlParameters']['currStartTimeLastOptHorizon'])
-        print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
+        #print("###########")
+        #print(self.param['controlParameters']['currStartTimeLastOptHorizon'])
+        #print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
 
 
         """
@@ -136,6 +137,8 @@ class Param():
         self.param['controlParameters']['pathCharMapDataCalc'] = self.strPathCharMapDataCalc
         self.param['controlParameters']['pathPVData'] = self.strPathPVData 
         self.param['controlParameters']['pathPPData'] = self.strPathPPData
+        self.param['controlParameters']['pathInitialData'] = self.strPathInitialData
+        self.param['controlParameters']['pathAdaptationData'] = self.strPathAdaptationData
 
         self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
         self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0

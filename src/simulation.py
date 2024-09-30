@@ -35,6 +35,8 @@ class Simulation():
     def funcSimulate(self, resultOpt, cm, elec, pv, pp):
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
+        #if self.param.param['controlParameters']['checkPPUncertainty'] == True
+
         # Output variables
         self.dictOutput['storageH2Pressure'] = []
         self.dictOutput['storageMethanolWaterFilling'] = []
@@ -124,10 +126,6 @@ class Simulation():
         # Save the data in result
         resultOpt.dictResult['output'] = self.dictOutput
         resultOpt.dictResult['costs'] = self.dictCosts
-
-
-    def funcSimulateDrift(self, resultOpt, cm, elec, pv, pp):
-        a = 1
 
         
 

@@ -3,12 +3,11 @@
 from characteristic_fields import *
 
 import gurobipy as gp
-import math
 from gurobipy import GRB
 from gurobipy import *
-import time
 import os
 import pickle
+import scipy.io
 
 class Optimization_Model():
 
@@ -25,6 +24,10 @@ class Optimization_Model():
         self.m = gp.Model('ptm')
         self.m.ModelSense = GRB.MINIMIZE
         self.funcCreateVariables(cm, elec, pv, pp)
+
+        # Extract information from adaptation which operation points to use
+        #self.funcExtractInformationFromAdaptation(cm, elec, pv, pp)
+
         self.funcCreateConstraints(cm, elec, pv, pp)
         self.funcCreateCostFunction(cm, elec, pv, pp)
         self.funcSetInitialValues(cm, elec, pv, pp)
@@ -44,9 +47,8 @@ class Optimization_Model():
 
     ########## Initial Values ##########
     def funcSetInitialValues(self, cm, elec, pv, pp):
-        strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM'
-        if os.path.isfile(strPathInitialValues + "\input_data.pkl") == True:
-            with open(strPathInitialValues + "\input_data.pkl", 'rb') as f:
+        if os.path.isfile(self.param.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
+            with open(self.param.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
                 initialData = pickle.load(f)
         
             for t in self.arrTime:
@@ -132,6 +134,77 @@ class Optimization_Model():
                 - gp.quicksum(self.param.param['prices']['powerSold'] * self.OptVarPowerOutBatterySold[i,r] * 1/pp.iNumberUncertaintySamples for i in self.arrTime for r in range(0,pp.iNumberUncertaintySamples)))
 
 
+
+    ########## Extract information from adaptation ##########
+    def funcExtractInformationFromAdaptation(self, cm, elec, pv, pp):
+        fTimeStep = self.param.param['controlParameters']['timeStep']
+
+        if os.path.isfile(self.param.param['controlParameters']['pathAdaptationData'] + "\dataBase.mat") == True:
+            mat = scipy.io.loadmat(self.param.param['controlParameters']['pathAdaptationData'] + "\dataBase.mat")
+            print(mat)
+
+            operationPointsToUseABSDES = [1,45,735]
+            operationPointsToUseMEOHSYN = 50
+            operationPointsToUseDIS = 50
+
+            operationPointsNotToUseABSDES = 2
+            operationPointsNotToUseMEOHSYN = 4
+            operationPointsNotToUseDIS = 6
+
+            ## Selection of different operation points to use
+            for i in range(0,len(operationPointsToUseABSDES)):
+                bIsFeasible = self.funcCheckForFeasibility(operationPointsToUseABSDES[i],1)
+                if bIsFeasible == True:
+                    self.m.addConstrs(
+                        gp.quicksum(self.OptVarOperationPointABSDES[(t,operationPointsToUseABSDES(i))] for t in self.arrTime[:self.param['controlParameters']['numTimeStepsToSimulate']]) >= 1, "Operation points to use ABSDES")
+                
+            for i in range(0,len(operationPointsToUseMEOHSYN)):
+                bIsFeasible = self.funcCheckForFeasibility(operationPointsToUseMEOHSYN(i),2)
+                if bIsFeasible == True:
+                    self.m.addConstrs(
+                        gp.quicksum(self.OptVarOperationPointMEOHSYN[(t,operationPointsToUseMEOHSYN(i))] for t in self.arrTime[:self.param['controlParameters']['numTimeStepsToSimulate']]) >= 1, "Operation points to use MEOHSYN")
+                    
+            for i in range(0,len(operationPointsToUseDIS)):
+                bIsFeasible = self.funcCheckForFeasibility(operationPointsToUseDIS(i),3)
+                if bIsFeasible == True:
+                    self.m.addConstrs(
+                        gp.quicksum(self.OptVarOperationPointMEOHSYN[(t,operationPointsToUseDIS(i))] for t in self.arrTime[:self.param['controlParameters']['numTimeStepsToSimulate']]) >= 1, "Operation points to use DIS")
+                    
+
+            ## Selection of different operation points not to use
+            for i in range(0,len(operationPointsNotToUseABSDES)):
+                self.m.addConstrs(
+                    gp.quicksum(self.OptVarOperationPointABSDES[(t,operationPointsNotToUseABSDES(i))] for t in self.arrTime) == 0, "Operation points not to use ABSDES")
+                
+            for i in range(0,len(operationPointsNotToUseMEOHSYN)):
+                self.m.addConstrs(
+                    gp.quicksum(self.OptVarOperationPointMEOHSYN[(t,operationPointsNotToUseMEOHSYN(i))] for t in self.arrTime) == 0, "Operation points not to use MEOHSYN")
+                    
+            for i in range(0,len(operationPointsNotToUseDIS)):
+                self.m.addConstrs(
+                    gp.quicksum(self.OptVarOperationPointMEOHSYN[(t,operationPointsNotToUseDIS(i))] for t in self.arrTime) == 0, "Operation points not to use DIS")
+
+
+    ########## Check for feasibility of operation points ##########
+    def funcCheckForFeasibility(self, operationPoint, idxCharMap):
+        bIsFeasible = False
+
+        # Minimum amount of methane in outflowing biogas
+        if idxCharMap == 1:
+            if cm.moleFractionMethaneBiogasOut[(operationPoint)] >= self.param.param['constraints']['minMoleFractionCH4BiogasOut']:
+                bIsFeasible = True
+            else: 
+                return False
+
+            if cm.moleFractionHydrogenSynthesisgas[(operationPoint)] / cm.moleFractionCarbondioxideSynthesisgas[(operationPoint)] <= self.param.param['constraints']['maxRatioH2_CO2_Synthesisgas'] and cm.moleFractionHydrogenSynthesisgas[(operationPoint)] / cm.moleFractionCarbondioxideSynthesisgas[(operationPoint)] >= self.param.param['constraints']['minRatioH2_CO2_Synthesisgas']:
+                bIsFeasible = True
+            else:
+                return False
+            
+
+        return bIsFeasible 
+
+
     ########## Constraints ##########
     def funcCreateConstraints(self, cm, elec, pv, pp):
         fTimeStep = self.param.param['controlParameters']['timeStep']
@@ -165,9 +238,6 @@ class Optimization_Model():
         if self.param.param['controlParameters']['benchmark'] == False:
             if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
 
-                print(self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval'])
-                print(self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:])
-                print("#########")
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
                     self.m.addConstr(
                         (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) 
@@ -683,3 +753,5 @@ class Optimization_Model():
                 ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) >= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleUpwardBound'] * fTimeStep for t in self.arrTime[2:]), "Operation point change absorption/desorption upward bound")
             self.m.addConstrs(
                 ((gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t-1,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) - gp.quicksum((cm.massFlowMethanolWaterInCycle[(j)] * self.OptVarOperationPointABSDES[(t,j)] * fTimeStep for j in cm.arrOperationPointsABSDES[1:])) <= self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleDownwardBound'] * fTimeStep for t in self.arrTime[2:]), "Operation point change absorption/desorption downward bound")
+
+

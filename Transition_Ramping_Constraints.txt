@@ -1,0 +1,31 @@
+Transition:
+
+Absorption + Desorption
+	--> Druckaufbau Desorption:		1h
+	--> Aufheizen Desorption (130°C):	2-3h
+	--> Kühlung Absorption (-20°C):		1-2h
+	mind. 3h
+
+Methanolsynthese
+	--> Reaktoren aufheizen:		6h
+	--> Maximalen Durchfluss einstellen	1-2h
+	mind. 6h
+
+Destillation
+	--> Aufheizen Kolonne:			4h
+	mind. 4h
+
+
+Ramping:
+
+Absorption + Desorption
+	Methanol-Wasser im Kreislauf --> Bei Änderung der Durchflussmenge muss Kühlung angepasst werden
+	--> maximal +-50 kg/h
+
+Methanolsynthese
+	Bei Änderung des Durchflusses muss sich erst die maximale Durchflussmenge einstellen + Temperaturen der Heizungen angepasst werden
+	--> maximal +-2kg/h
+
+Destillation
+	Bei Änderung des Durchflusses müssen erst die Temperaturen der Heizungen angepasst werden
+	--> maximal +- 2kg/h		
