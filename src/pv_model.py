@@ -21,10 +21,12 @@ from pvlib.pvsystem import PVSystem
 # at a chosen loaction with historic weather data such as wind, irradiation and temperature. It also takes a lot of other factors into
 # account. For more information visit https://pvlib-python.readthedocs.io/en/stable/user_guide/package_overview.html
 
+# Quelle re.jrc.ec.europa.eu
+
 class PV():
     def __init__(self, param):
         self.param = param
-        self.iStartInit = 24*5 #+ 24*7*25   #312
+        self.iStartInit = 24*1 #+ 24*7*25   #312
         self.strModule = self.param.param['pv']['module']
         self.strInverter = self.param.param['pv']['inverter']
         self.strPvLat = "49.09"
@@ -51,7 +53,6 @@ class PV():
                 self.arrPowerAvailable.append(self.pvdata[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))] * self.param.param['controlParameters']['timeStep'])
             else:
                 self.arrPowerAvailable.append(0)
-    
         
         self.funcAddUncertainty()
         self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
@@ -61,22 +62,23 @@ class PV():
     def funcCreateData(self):
 
         # Weather
-        global_2020 = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_global_2020.csv", skiprows=8, nrows = 8784,index_col=0)
-        components_2020 = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_components_2020.csv", skiprows=8, nrows = 8784,index_col=0)
+        global_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_global_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+        components_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
     
 
-        poa_data_2020 = pd.DataFrame(columns=[
+        poa_data = pd.DataFrame(columns=[
             'poa_global','poa_direct','poa_diffuse','temp_air','wind_speed'],
-            index=global_2020.index)
+            index=components_data.index)
         
-        poa_data_2020['poa_global'] = global_2020['G(i)']
-        poa_data_2020['poa_direct'] = components_2020['Gb(i)']
-        poa_data_2020['poa_diffuse'] = components_2020['Gd(i)'] + components_2020['Gr(i)']
-        poa_data_2020['temp_air'] = components_2020['T2m']
-        poa_data_2020['wind_speed'] = components_2020['WS10m']
-        poa_data_2020.index = pd.to_datetime(poa_data_2020.index, format="%Y%m%d:%H%M")
+        pv_pvgis = components_data['P'] / 1000
+        poa_data['poa_global'] = global_data['G(i)']
+        poa_data['poa_direct'] = components_data['Gb(i)']
+        poa_data['poa_diffuse'] = components_data['Gd(i)'] #+ components_data['Gr(i)']
+        poa_data['temp_air'] = components_data['T2m']
+        poa_data['wind_speed'] = components_data['WS10m']
+        poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
         
-        poa_data_2020.to_csv(self.param.param['controlParameters']['pathPVData'] + "poa_data_2020.csv")
+        poa_data.to_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data.csv")
 
         # PV
         location = Location(latitude=49.09, longitude=8.44,tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
@@ -89,17 +91,17 @@ class PV():
 
         temperature_parameters = pvlib.temperature.TEMPERATURE_MODEL_PARAMETERS['sapm']['open_rack_glass_glass']
 
-        system = PVSystem(surface_tilt=45, surface_azimuth=180,
+        system = PVSystem(surface_tilt=36, surface_azimuth=180,         # gemessen von Norden nach Osten (also sind 180° genau im Süden)
                           module_parameters=module, inverter_parameters=inverter,
                           temperature_model_parameters=temperature_parameters,
                           modules_per_string=1,strings_per_inverter=1)
         
         modelChain = ModelChain(system, location)
 
-        poa_data_2020_Used = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data_2020.csv", index_col=0)
-        poa_data_2020_Used.index = pd.to_datetime((poa_data_2020.index))
+        poa_data_Used = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data.csv", index_col=0)
+        poa_data_Used.index = pd.to_datetime((poa_data.index))
 
-        modelChain.run_model_from_poa(poa_data_2020_Used)
+        modelChain.run_model_from_poa(poa_data_Used)
 
         pvData_Series = modelChain.results.ac
         self.dataRaw = pvData_Series.to_numpy()
@@ -109,6 +111,22 @@ class PV():
                 self.dataRaw[i] = 0.0
 
             self.pvdata.append(self.dataRaw[i] * self.param.param['pv']['powerOfSystem'] / self.param.param['pv']['powerOfModule'] / 1000)
+
+        """
+        x = list(range(0,len(self.pvdata)))
+
+        plt.plot(x,self.pvdata,'-b',linewidth=2)
+        plt.xlabel("time in h")
+        plt.ylabel("power in kWh")
+
+        plt.show()
+
+        plt.plot(x,pv_pvgis,'-b',linewidth=2)
+        plt.xlabel("time in h")
+        plt.ylabel("power in kWh")
+
+        plt.show()
+        """
 
         #pvData = {"pv": self.pvdata}
         #savemat('C:/PROJEKTE/PTX/Max/50_Daten/05_PV/pv_data_2020.mat', pvData)

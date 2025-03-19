@@ -1,5 +1,3 @@
-#!/usr/bin/env python3.10
-
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -7,12 +5,11 @@ from selenium import webdriver
 from datetime import datetime
 
 ##################################
-########## Electricity price ##########
+########## Carbon intensity ##########
 
-# Quelle: energy-charts.info -> EPEX SPOT Börsenstrompreis
+# Quelle: electricitymaps.com
 
-
-class PowerPrice():
+class CarbonIntensity():
 
     def __init__(self, param):
         self.param = param
@@ -22,14 +19,16 @@ class PowerPrice():
 
         self.iNumberUncertaintySamples = self.param.param['prices']['numberOfUncertaintySamples']
 
-        self.arrPowerPriceHourly = []
+        self.arrCarbonIntensityHourly = []
 
-        # Energy price
-        DataFrameEnergyCharts = pd.read_excel(self.param.param['controlParameters']['pathPPData'] + "\energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2023.xlsx")
-        arrEnergyCharts = DataFrameEnergyCharts.to_numpy()
+        # Carbon intensity
+        DataFrameCarbonIntensityCharts = pd.read_csv(self.param.param['controlParameters']['pathPPData'] + "\DE_carbon_intensity_2023_hourly.csv")
+        arrCarbonIntensityCharts = DataFrameCarbonIntensityCharts.to_numpy()
+
+        self.arrCarbonIntensityAll = []
+        for i in range(0, len(arrCarbonIntensityCharts)):
+           self.arrCarbonIntensityAll.append(arrCarbonIntensityCharts[i][4])
     
-        self.arrPowerPriceHourlyAll = arrEnergyCharts[1:,4] / 1000
-        #self.funcUpdate(param, 0)
 
 
     def funcUpdate(self, param, iteration):
@@ -37,22 +36,18 @@ class PowerPrice():
         self.iStart = self.iStartInit + self.param.param['controlParameters']['numHoursToSimulate']*iteration#24*7*iteration#25#iteration
         self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
 
-        self.arrPowerPriceHourly = []
-        self.arrPowerPriceHourly.append(0)
+        self.arrCarbonIntensityHourly = []
+        self.arrCarbonIntensityHourly.append(0)
 
         for i in range(self.iStart, self.iStop):
-            self.arrPowerPriceHourly.append(self.arrPowerPriceHourlyAll[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))])
-
-        #x = list(range(0,len(self.arrPowerPriceHourly)))
-        #plt.plot(x,self.arrPowerPriceHourly,'-b',linewidth=2)
-        #plt.show()
+            self.arrCarbonIntensityHourly.append(self.arrCarbonIntensityAll[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))])
 
         #self.funcAddUncertainty()
-        self.iNumberUncertaintySamples = self.param.param['prices']['numberOfUncertaintySamples']
+        self.iNumberUncertaintySamples = self.param.param['carbonIntensity']['numberOfUncertaintySamples']
 
 
     def funcAddUncertainty(self):
-        arrCov = np.zeros((len(self.arrPowerPriceHourly),len(self.arrPowerPriceHourly)))
+        arrCov = np.zeros((len(self.arrCarbonIntensityHourly),len(self.arrCarbonIntensityHourly)))
         arrMean = np.zeros(arrCov.shape[0])
 
         arrCovValues = [0,2,4,6,8,10,12]
@@ -67,22 +62,22 @@ class PowerPrice():
             iCounter = iCounter + 1
 
         for i in range(0,arrCov.shape[0]):
-            arrMean[i] = self.arrPowerPriceHourly[i]
+            arrMean[i] = self.arrCarbonIntensityHourly[i]
 
         np.random.seed(1)
-        self.arrPowerPriceSamples = np.random.multivariate_normal(arrMean,arrCov, self.iNumberUncertaintySamples)
+        self.arrCarbonIntensitySamples = np.random.multivariate_normal(arrMean,arrCov, self.iNumberUncertaintySamples)
 
         for i in range(0,arrCov.shape[0]):
             for j in range(0, self.iNumberUncertaintySamples):
-                if self.arrPowerPriceSamples[j][i] <= 0:
-                    self.arrPowerPriceSamples[j][i] = 0
+                if self.arrCarbonIntensitySamples[j][i] <= 0:
+                    self.arrCarbonIntensitySamples[j][i] = 0
 
-                self.arrPowerPriceSamples[j][0] = 0
+                self.arrCarbonIntensitySamples[j][0] = 0
 
         """
         x = list(range(0,len(self.arrPowerPriceHourly)))
         for i in range(0, self.iNumberUncertaintySamples):
-            plt.plot(x,self.arrPowerPriceSamples[i],'--r')
+            plt.plot(x,self.arrCarbonIntensitySamples[i],'--r')
 
         plt.plot(x,self.arrPowerPriceHourly,'-b',linewidth=2)
         plt.show()

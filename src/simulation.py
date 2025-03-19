@@ -2,7 +2,7 @@
 
 
 #############################
-########## Results ##########
+########## Simulation ##########
 
 import gurobipy as gp
 import numpy as np
@@ -17,85 +17,156 @@ class Simulation():
     def funcUpdate(self, param):
         self.param = param
         self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']+1))
-        self.dictResult = {'output': {}, 'costs': {}}
         self.dictOutput = {}
         self.dictCosts = {}
         self.arrConstrViolationInput = []
         self.dictConstrViolationOutput = {}
 
-    def funcStartSimulation(self, param, resultOpt, cm, elec, pv, pp):
+    def funcStartSimulation(self, param, resultOpt, cm, elec, pv, pp, ci):
         
         self.funcUpdate(param)
         
-        self.funcSimulate(resultOpt, cm, elec, pv, pp)
-        #self.funcCheckUncertaintyConstraints(resultOpt, cm, elec, pv, pp)
-        #self.funcCheckConstraints(resultOpt, cm, elec, pv, pp)
+        self.funcSimulate(resultOpt, cm, elec, pv, pp, ci)
+        #self.funcCheckUncertaintyConstraints(resultOpt, cm, elec, pv, pp, ci)
+        #self.funcCheckConstraints(resultOpt, cm, elec, pv, pp, ci)
 
 
-    def funcSimulate(self, resultOpt, cm, elec, pv, pp):
+    def funcSimulate(self, resultOpt, cm, elec, pv, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
-        #if self.param.param['controlParameters']['checkPPUncertainty'] == True
-
         # Output variables
+        self.dictOutput['massFlowHydrogenIn'] = []
+        self.dictOutput['massFlowBiogasOut'] = []
+        self.dictOutput['moleFractionMethaneBiogasOut'] = []
+        self.dictOutput['massFlowMethanolWaterStorageIn'] = []
+        self.dictOutput['massFlowMethanolWaterStorageOut'] = []
+        self.dictOutput['massFlowMethanolOut'] = []
+        self.dictOutput['moleFractionH2SynthesisgasIn'] = []
+        self.dictOutput['moleFractionCO2SynthesisgasIn'] = []
+
+        self.dictOutput['powerPlantCO2CAP_SYN'] = []
+        self.dictOutput['powerPlantDIS'] = []
+
         self.dictOutput['storageH2Pressure'] = []
         self.dictOutput['storageMethanolWaterFilling'] = []
-        self.dictOutput['massFlowMethanolOut'] = []
-        self.dictOutput['moleFractionMethaneBiogasOut'] = []
-        self.dictOutput['powerPlantABSDES_MEOHSYN'] = []
-        self.dictOutput['powerPlantDIS'] = []
-        self.dictOutput['volumeBiogasIn'] = []
-        self.dictOutput['volumeBiogasOut'] = []
-        self.dictOutput['moleFractionH2Synthesisgas'] = []
-        self.dictOutput['moleFractionCO2Synthesisgas'] = []
         self.dictOutput['batteryCharge'] = []
-        self.dictOutput['storageSynthesisgasPressure'] = []
-        self.dictOutput['massFlowSynthesisgasIn'] = []
-        self.dictOutput['powerPlantMEOHSYN'] = []
-        self.dictOutput['massFlowMeOHWaterInCycle'] = []
-        self.dictOutput['massFlowSynthesisgasOut'] = []
-        self.dictOutput['massFlowMethanolWaterStorageOut'] = []
+
 
 
         for i in self.arrTime:#range(0,self.param.param['controlParameters']['numTimeStepsToSimulate']+1):
 
+
+            self.dictOutput['massFlowHydrogenIn'].append(
+                + cm.massFlowHydrogenIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.massFlowHydrogenIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.massFlowHydrogenIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.massFlowHydrogenIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.massFlowHydrogenIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
             
+            self.dictOutput['massFlowBiogasOut'].append(
+                + cm.massFlowBiogasOut[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.massFlowBiogasOut[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.massFlowBiogasOut[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.massFlowBiogasOut[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.massFlowBiogasOut[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['moleFractionMethaneBiogasOut'].append(
+                + cm.moleFractionMethaneBiogasOut[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.moleFractionMethaneBiogasOut[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.moleFractionMethaneBiogasOut[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.moleFractionMethaneBiogasOut[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.moleFractionMethaneBiogasOut[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['massFlowMethanolWaterStorageIn'].append(
+                + cm.massFlowMethanolWaterStorageIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.massFlowMethanolWaterStorageIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.massFlowMethanolWaterStorageIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.massFlowMethanolWaterStorageIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+           
+            self.dictOutput['massFlowMethanolWaterStorageOut'].append(
+                + cm.massFlowMethanolWaterStorageOut[0] * resultOpt.dictResult['input']['operationPoint_DIS'][i,0] * resultOpt.dictResult['input']['currentStateDISRaw'][i,0] * fTimeStep
+                + cm.massFlowMethanolWaterStorageOut[1] * resultOpt.dictResult['input']['operationPoint_DIS'][i,1] * resultOpt.dictResult['input']['currentStateDISRaw'][i,1] * fTimeStep
+                + cm.massFlowMethanolWaterStorageOut[2] * resultOpt.dictResult['input']['operationPoint_DIS'][i,2] * resultOpt.dictResult['input']['currentStateDISRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.massFlowMethanolWaterStorageOut[j] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * resultOpt.dictResult['input']['currentStateDISRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
+                + cm.massFlowMethanolWaterStorageOut[3] * resultOpt.dictResult['input']['operationPoint_DIS'][i,3] * resultOpt.dictResult['input']['currentStateDISRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['massFlowMethanolOut'].append(
+                + cm.massFlowMethanolOut[0] * resultOpt.dictResult['input']['operationPoint_DIS'][i,0] * resultOpt.dictResult['input']['currentStateDISRaw'][i,0] * fTimeStep
+                + cm.massFlowMethanolOut[1] * resultOpt.dictResult['input']['operationPoint_DIS'][i,1] * resultOpt.dictResult['input']['currentStateDISRaw'][i,1] * fTimeStep
+                + cm.massFlowMethanolOut[2] * resultOpt.dictResult['input']['operationPoint_DIS'][i,2] * resultOpt.dictResult['input']['currentStateDISRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.massFlowMethanolOut[j] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * resultOpt.dictResult['input']['currentStateDISRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
+                + cm.massFlowMethanolOut[3] * resultOpt.dictResult['input']['operationPoint_DIS'][i,3] * resultOpt.dictResult['input']['currentStateDISRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['moleFractionH2SynthesisgasIn'].append(
+                + cm.moleFractionH2SynthesisgasIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.moleFractionH2SynthesisgasIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.moleFractionH2SynthesisgasIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.moleFractionH2SynthesisgasIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.moleFractionH2SynthesisgasIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['moleFractionCO2SynthesisgasIn'].append(
+                + cm.moleFractionCO2SynthesisgasIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.moleFractionCO2SynthesisgasIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.moleFractionCO2SynthesisgasIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.moleFractionCO2SynthesisgasIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.moleFractionCO2SynthesisgasIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['powerPlantCO2CAP_SYN'].append(
+                + cm.powerPlantComponentsUnit1[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,0] * fTimeStep
+                + cm.powerPlantComponentsUnit1[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,1] * fTimeStep
+                + cm.powerPlantComponentsUnit1[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.powerPlantComponentsUnit1[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:])
+                + cm.powerPlantComponentsUnit1[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,4] * fTimeStep)
+            
+            self.dictOutput['powerPlantDIS'].append(
+                + cm.powerPlantComponentsUnit2[0] * resultOpt.dictResult['input']['operationPoint_DIS'][i,0] * resultOpt.dictResult['input']['currentStateDISRaw'][i,0] * fTimeStep
+                + cm.powerPlantComponentsUnit2[1] * resultOpt.dictResult['input']['operationPoint_DIS'][i,1] * resultOpt.dictResult['input']['currentStateDISRaw'][i,1] * fTimeStep
+                + cm.powerPlantComponentsUnit2[2] * resultOpt.dictResult['input']['operationPoint_DIS'][i,2] * resultOpt.dictResult['input']['currentStateDISRaw'][i,2] * fTimeStep
+                + gp.quicksum(cm.powerPlantComponentsUnit2[j] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * resultOpt.dictResult['input']['currentStateDISRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
+                + cm.powerPlantComponentsUnit2[3] * resultOpt.dictResult['input']['operationPoint_DIS'][i,3] * resultOpt.dictResult['input']['currentStateDISRaw'][i,4] * fTimeStep)
+
+
             self.dictOutput['batteryCharge'].append((self.param.param['battery']['initialCharge'] 
-                + gp.quicksum(resultOpt.dictResult['input']['powerInBatteryPV'][l] for l in self.arrTime[0:i+1]) 
-                + gp.quicksum(resultOpt.dictResult['input']['powerInBatteryBought'][l] for l in self.arrTime[0:i+1])
-                - gp.quicksum(resultOpt.dictResult['input']['powerOutBattery'][l] for l in self.arrTime[0:i+1])
-                - gp.quicksum(resultOpt.dictResult['input']['powerOutBatterySold'][l] for l in self.arrTime[0:i+1])))
-
-            self.dictOutput['storageH2Pressure'].append((self.param.param['storageH2']['InitialFilling']
-                + gp.quicksum(resultOpt.dictResult['input']['powerElectrolyserRaw'][l,n] * resultOpt.dictResult['input']['modeElectrolyserRaw'][l,n,3] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:i+1] for n in elec.arrEnapterModules)
-                - gp.quicksum(cm.massFlowHydrogenIn[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][l,j] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:i+1]) 
-                - gp.quicksum(cm.massFlowAdditionalHydrogen[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][l,j] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:i+1])) 
-                * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000))
+                + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryPV'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])
+                + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryBought'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])  
+                - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBattery'][l] for l in self.arrTime[0:i+1])
+                - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBatterySold'][l] for l in self.arrTime[0:i+1])))
             
+            self.dictOutput['batteryCharge'][i] = self.dictOutput['batteryCharge'][i] / self.param.param['battery']['power'] * 100
+
+
+            if self.param.param['controlParameters']['objectiveFunction'] == 7 or self.param.param['controlParameters']['objectiveFunction'] == 8:
+                self.dictOutput['storageH2Pressure'].append((self.param.param['storageH2']['InitialFilling']
+                    + gp.quicksum(cm.powerElectrolyser[j] * resultOpt.dictResult['input']['powerElectrolyserRaw'][l,j,n] * resultOpt.dictResult['input']['modeElectrolyserRaw'][l,n,3] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:i+1] for n in elec.arrEnapterModules for j in cm.arrOperationPointsELEC)
+                    - gp.quicksum(cm.massFlowHydrogenIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,0] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,1] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,2] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:] for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,4] * fTimeStep for l in self.arrTime[0:i+1]))
+                    * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000))                     
+            else:
+                self.dictOutput['storageH2Pressure'].append((self.param.param['storageH2']['InitialFilling']
+                    + gp.quicksum(resultOpt.dictResult['input']['powerElectrolyserRaw'][l,n] * resultOpt.dictResult['input']['modeElectrolyserRaw'][l,n,3] * self.param.param['electrolyser']['constant'] * fTimeStep for l in self.arrTime[0:i+1] for n in elec.arrEnapterModules)
+                    - gp.quicksum(cm.massFlowHydrogenIn[0] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,0] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[1] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,1] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[2] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,2] * fTimeStep for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:] for l in self.arrTime[0:i+1])
+                    - gp.quicksum(cm.massFlowHydrogenIn[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,4] * fTimeStep for l in self.arrTime[0:i+1]))
+                    * self.param.param['R_H2'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageH2']['Volume'] * 100000))
+
+
             self.dictOutput['storageMethanolWaterFilling'].append(self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageInSynthesis[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_MEOHSYN'][l,j] * fTimeStep for j in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:i+1]) 
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity']  * resultOpt.dictResult['input']['operationPoint_DIS'][l,j] * fTimeStep for j in cm.arrOperationPointsDIS for l in self.arrTime[0:i+1]))
-
-            self.dictOutput['storageSynthesisgasPressure'].append((self.param.param['storageSynthesisgas']['InitialFilling']
-                + gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][l,j] * fTimeStep for j in cm.arrOperationPointsABSDES for l in self.arrTime[0:i+1])
-                - gp.quicksum(cm.massFlowSynthesisgasOut[(j)] * resultOpt.dictResult['input']['operationPoint_MEOHSYN'][l,j] * fTimeStep for j in cm.arrOperationPointsMEOHSYN for l in self.arrTime[0:i+1]))
-                * self.param.param['R_Synthesisgas'] * (self.param.param['Tamb'] + self.param.param['T0']) / (self.param.param['storageSynthesisgas']['Volume'] * 100000))    
-
-            self.dictOutput['massFlowSynthesisgasIn'].append(gp.quicksum(cm.massFlowSynthesisgasIn[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] * fTimeStep for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['massFlowSynthesisgasOut'].append(gp.quicksum(cm.massFlowSynthesisgasOut[(j)] * resultOpt.dictResult['input']['operationPoint_MEOHSYN'][i,j] * fTimeStep for j in cm.arrOperationPointsMEOHSYN))
-            self.dictOutput['massFlowMethanolWaterStorageOut'].append(gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * fTimeStep for j in cm.arrOperationPointsDIS))
-            self.dictOutput['massFlowMethanolOut'].append(gp.quicksum(cm.massFlowMethanolOut[(j)] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * fTimeStep for j in cm.arrOperationPointsDIS))
-            self.dictOutput['moleFractionMethaneBiogasOut'].append(gp.quicksum(cm.moleFractionMethaneBiogasOut[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['powerPlantABSDES_MEOHSYN'].append(gp.quicksum(cm.powerPlantComponentsUnit1[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] * fTimeStep for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['powerPlantMEOHSYN'].append(gp.quicksum(cm.powerPlantComponentsUnit2[(j)] * resultOpt.dictResult['input']['operationPoint_MEOHSYN'][i,j] * fTimeStep for j in cm.arrOperationPointsMEOHSYN))
-            self.dictOutput['powerPlantDIS'].append(gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * resultOpt.dictResult['input']['operationPoint_DIS'][i,j] * fTimeStep for j in cm.arrOperationPointsDIS))        
-            self.dictOutput['massFlowMeOHWaterInCycle'].append(gp.quicksum(cm.massFlowMethanolWaterInCycle[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] for j in cm.arrOperationPointsABSDES))
-
-            self.dictOutput['volumeBiogasIn'].append(gp.quicksum(cm.volumeBiogasIn[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] * fTimeStep for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['volumeBiogasOut'].append(gp.quicksum(cm.volumeBiogasOut[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] * fTimeStep for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['moleFractionH2Synthesisgas'].append(gp.quicksum(cm.moleFractionHydrogenSynthesisgas[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] for j in cm.arrOperationPointsABSDES))
-            self.dictOutput['moleFractionCO2Synthesisgas'].append(gp.quicksum(cm.moleFractionCarbondioxideSynthesisgas[(j)] * resultOpt.dictResult['input']['operationPoint_ABSDES'][i,j] for j in cm.arrOperationPointsABSDES))
-
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,0] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,0] * fTimeStep for l in self.arrTime[0:i+1])
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,1] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,1] * fTimeStep for l in self.arrTime[0:i+1])
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,2] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,2] * fTimeStep for l in self.arrTime[0:i+1])
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,j] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP_SYN[4:] for l in self.arrTime[0:i+1])
+                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_CO2CAP_SYN'][l,3] * resultOpt.dictResult['input']['currentStateCO2CAP_SYNRaw'][l,4] * fTimeStep for l in self.arrTime[0:i+1])
+                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_DIS'][l,0] * resultOpt.dictResult['input']['currentStateDISRaw'][l,0] * fTimeStep for l in self.arrTime[0:i+1])
+                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_DIS'][l,1] * resultOpt.dictResult['input']['currentStateDISRaw'][l,1] * fTimeStep for l in self.arrTime[0:i+1])
+                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_DIS'][l,2] * resultOpt.dictResult['input']['currentStateDISRaw'][l,2] * fTimeStep for l in self.arrTime[0:i+1])
+                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_DIS'][l,j] * resultOpt.dictResult['input']['currentStateDISRaw'][l,3] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for l in self.arrTime[0:i+1])
+                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * resultOpt.dictResult['input']['operationPoint_DIS'][l,3] * resultOpt.dictResult['input']['currentStateDISRaw'][l,4] * fTimeStep for l in self.arrTime[0:i+1]))
             
             for key in self.dictOutput:
                 self.dictOutput[key][i] = self.dictOutput[key][i].getValue()
@@ -104,186 +175,22 @@ class Simulation():
         self.dictOutput['moleRatioH2_CO2_Synthesisgas'] = []
         self.dictOutput['moleRatioH2_CO2_Synthesisgas'].append(0)
 
+        #for i in self.arrTime[1:]:
+        #    self.dictOutput['moleRatioH2_CO2_Synthesisgas'].append(self.dictOutput['moleFractionH2SynthesisgasIn'][i] / self.dictOutput['moleFractionCO2SynthesisgasIn'][i])
 
 
-        for i in self.arrTime[1:]:#range(1,self.param.param['controlParameters']['numTimeStepsToSimulate']+1):
-            self.dictOutput['moleRatioH2_CO2_Synthesisgas'].append(self.dictOutput['moleFractionH2Synthesisgas'][i] / self.dictOutput['moleFractionCO2Synthesisgas'][i])
 
         # Costs
         self.dictCosts['methanol'] = -np.sum(np.array(self.dictOutput['massFlowMethanolOut']) * self.param.param['prices']['methanol'])
-        self.dictCosts['biogasOut'] = -np.sum(np.array(self.dictOutput['volumeBiogasOut']) * self.param.param['methane']['brennwert'] * self.param.param['prices']['methane'])
-        self.dictCosts['biogasIn'] = np.sum(np.array(self.dictOutput['volumeBiogasIn']) * self.param.param['biogas']['brennwert'] * self.param.param['prices']['biogas'])
-
         self.dictCosts['powerBought'] = np.sum(np.dot(self.param.param['prices']['power'], resultOpt.dictResult['input']['powerBought']))
-
+        self.dictCosts['carbonIntensity'] = np.sum(np.dot(self.param.param['carbonIntensity']['carbonIntensity'], resultOpt.dictResult['input']['powerBought']))
         self.dictCosts['powerBatterySold'] = 0.0
         for i in self.arrTime: 
-            self.dictCosts['powerBatterySold'] = self.dictCosts['powerBatterySold'] - self.param.param['prices']['powerSold']*resultOpt.dictResult['input']['powerOutBatterySold'][i]
+            self.dictCosts['powerBatterySold'] = self.dictCosts['powerBatterySold'] - self.param.param['prices']['powerSold']*resultOpt.dictResult['input']['actualPowerOutBatterySold'][i]
         
         self.dictCosts['all'] = sum(self.dictCosts.values())
-        self.dictCosts['allPositive'] = self.dictCosts['biogasIn'] + self.dictCosts['powerBought']
+
         
         # Save the data in result
         resultOpt.dictResult['output'] = self.dictOutput
         resultOpt.dictResult['costs'] = self.dictCosts
-
-        
-
-    def funcCheckUncertaintyConstraints(self, resultOpt, cm, elec, pv, pp):
-        self.bConstrViolationInput = False
-        if self.param.param['controlParameters']['checkPVUncertainty'] == True:
-            for i in self.arrTime:
-                if (resultOpt.dictResult['input']['usageOfPV'][i] + resultOpt.dictResult['input']['powerInBatteryPV'][i] - pv.arrPowerAvailable[i]) <= 10**(-6):
-                    pass
-                else:
-                    self.bConstrViolationInput = True
-                    self.arrConstrViolationInput.append("Time: " + str(i) + " - " + "PV available")
-
-                    # Costs time x
-                    x = 1
-                    resultOpt.dictResult['input']['powerBought'][i] = x * (resultOpt.dictResult['input']['powerBought'][i] + resultOpt.dictResult['input']['usageOfPV'][i] + resultOpt.dictResult['input']['powerInBatteryPV'][i] - pv.powerAvailable[i])
-
-                    # Switch off plant in time step
-                    """
-                    for j in cm.arrOperationPointsABSDES:
-                        resultOpt.dictResult['input']['operationPoint_ABSDES'][(i,j)] = 0
-
-                    for j in cm.arrOperationPointsMEOHSYN:
-                        resultOpt.dictResult['input']['operationPoint_MEOHSYN'][(i,j)] = 0
-
-                    for j in cm.arrOperationPointsDIS:
-                        resultOpt.dictResult['input']['operationPoint_DIS'][(i,j)] = 0
-
-
-                    resultOpt.dictResult['input']['operationPoint_ABSDES'][(i,0)] = 1
-                    resultOpt.dictResult['input']['operationPoint_MEOHSYN'][(i,0)] = 1
-                    resultOpt.dictResult['input']['operationPoint_DIS'][(i,0)] = 1
-
-                    for j in range(0, self.param.param['electrolyser']['numberOfEnapterModules']):
-                        resultOpt.dictResult['input']['powerElectrolyserRaw'][(i,j)] = 0
-                        for k in range(0,4):
-                            resultOpt.dictResult['input']['modeElectrolyserRaw'][i,j,k] = 0
-
-                        resultOpt.dictResult['input']['modeElectrolyserRaw'][i,j,3] = 1
-
-                    resultOpt.dictResult['input']['usageOfPV'][i] = 0
-                    resultOpt.dictResult['input']['powerInBatteryPV'][i] = 0
-                    resultOpt.dictResult['input']['powerInBatteryBought'][i] = 0
-                    resultOpt.dictResult['input']['powerOutBattery'][i] = 0
-                    resultOpt.dictResult['input']['powerOutBatterySold'][i] = 0
-                    resultOpt.dictResult['input']['powerBought'][i] = 0
-                    """
-
-
-        if self.bConstrViolationInput == True:
-            print("PV constraint violation")
-
-
-    def funcCheckConstraints(self, resultOpt, cm, elec, pv, pp):
-        # Constraint violation
-        # 1: Hydrogen storage equal pressure violation
-        # 2: Methanol water storage equal level violation
-        # 3: Synthesisgas storage equal pressure violation
-        # 4: Battery equal charge violation
-        # 5: Minimum amount of methanol produced violation
-
-        # 10: Hydrogen storage min pressure violation
-        # 11: Hydrogen storage max pressure violation
-        # 12: Methanol water storage min filling level violation
-        # 13: Methanol water storage max filling level violation
-        # 14: Synthesisgas storage min pressure violation
-        # 15: Synthesisgas storage max pressure violation
-        # 16: Battery min charge violation
-        # 17: Battery max charge violation
-
-        # 20: Minimum amount of methane of outflowing biogas violation
-        # 21: Synthesisgas min ratio hydrogen to carbon dioxide violation
-        # 22: Synthesisgas max ratio hydrogen to carbon dioxide violation
-
-        # 30: Rate of operation point change distillation upward violation
-        # 31: Rate of operation point change distillation downward violation
-        # 32: Rate of operation point change methanol synthesis upward violation
-        # 33: Rate of operation point change methanol synthesis downward violation
-        # 34: Rate of operation point change absorption/desorption upward violation
-        # 35: Rate of operation point change absorption/desorption downward violation
-
- 
-
-        self.dictConstrViolationOutput["general"] = []
-        if np.abs(resultOpt.dictResult['output']['storageH2Pressure'][0] - resultOpt.dictResult['output']['storageH2Pressure'][self.param.param['controlParameters']['numberOfTimeSteps']]) > self.param.param['constraints']['hydrogenStorageFillEqual']['UpperBound']:
-            self.dictConstrViolationOutput["general"].append(1)
-
-        if np.abs(resultOpt.dictResult['output']['storageMethanolWaterFilling'][0] - resultOpt.dictResult['output']['storageMethanolWaterFilling'][self.param.param['controlParameters']['numberOfTimeSteps']]) > self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']:
-            self.dictConstrViolationOutput["general"].append(2)
-
-        if np.abs(resultOpt.dictResult['output']['storageSynthesisgasPressure'][0] - resultOpt.dictResult['output']['storageSynthesisgasPressure'][self.param.param['controlParameters']['numberOfTimeSteps']]) > self.param.param['constraints']['synthesisgasStorageFillEqual']['UpperBound']:
-            self.dictConstrViolationOutput["general"].append(3)
-            
-        if np.abs(resultOpt.dictResult['output']['batteryCharge'][0] - resultOpt.dictResult['output']['batteryCharge'][self.param.param['controlParameters']['numberOfTimeSteps']]) > self.param.param['constraints']['batteryChargeEqual']['UpperBound']:
-            self.dictConstrViolationOutput["general"].append(4)
-
-        if self.param.param['controlParameters']['benchmark'] == False:
-            if np.sum(resultOpt.dictResult['output']['massFlowMethanolOut']) < self.param.param['production']['minMethanolOpt']:
-                self.dictConstrViolationOutput["general"].append(5)
-        else:
-            if np.sum(resultOpt.dictResult['output']['massFlowMethanolOut']) < self.param.param['production']['minMethanolBenchmark']:
-                self.dictConstrViolationOutput["general"].append(5)
-
-
-        for i in self.arrTime[1:]:
-            temp = []
-            # Hydrogen storage constraints
-            if resultOpt.dictResult['output']['storageH2Pressure'][i] < self.param.param['storageH2']['LowerBound']:
-                temp.append(10)
-            elif resultOpt.dictResult['output']['storageH2Pressure'][i] > self.param.param['storageH2']['UpperBound']:
-                temp.append(11)
-            
-            if resultOpt.dictResult['output']['storageMethanolWaterFilling'][i] < self.param.param['storageMethanolWater']['LowerBound']:
-                temp.append(12)
-            elif resultOpt.dictResult['output']['storageMethanolWaterFilling'][i] > self.param.param['storageMethanolWater']['UpperBound']:
-                temp.append(13)
-
-            if resultOpt.dictResult['output']['storageSynthesisgasPressure'][i] < self.param.param['storageSynthesisgas']['LowerBound']:
-                temp.append(14)
-            elif resultOpt.dictResult['output']['storageSynthesisgasPressure'][i] > self.param.param['storageSynthesisgas']['UpperBound']:
-                temp.append(15)
-
-            if resultOpt.dictResult['output']['batteryCharge'][i] < self.param.param['battery']['minCharge']:
-                temp.append(16)
-            elif resultOpt.dictResult['output']['batteryCharge'][i] > self.param.param['battery']['capacity']:
-                temp.append(17)
-
-
-            ## Production constraints
-            # Minimum amount of methane in outflowing biogas
-            if resultOpt.dictResult['output']['moleFractionMethaneBiogasOut'][i] < self.param.param['constraints']['minMoleFractionCH4BiogasOut']:
-                temp.append(20)
-
-            # Hydrogen to carbon dioxide ratio lower and upper bound
-            if resultOpt.dictResult['output']['moleRatioH2_CO2_Synthesisgas'][i] < self.param.param['constraints']['minRatioH2_CO2_Synthesisgas']:
-                temp.append(21)
-            elif resultOpt.dictResult['output']['moleRatioH2_CO2_Synthesisgas'][i] > self.param.param['constraints']['maxRatioH2_CO2_Synthesisgas']:
-                temp.append(22)
-        
-            ## Rate of change constraints
-            if self.param.param['controlParameters']['rateOfChangeConstranints'] == True and i != self.param.param['controlParameters']['numberOfTimeSteps']:
-                # Distillation (mass flow methanol water from storage)
-                if resultOpt.dictResult['output']['massFlowMethanolWaterStorageOut'][i+1] - resultOpt.dictResult['output']['massFlowMethanolWaterStorageOut'][i] > self.param.param['constraints']['operationPointChange']['distillationDownwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(30)
-                elif resultOpt.dictResult['output']['massFlowMethanolWaterStorageOut'][i+1] - resultOpt.dictResult['output']['massFlowMethanolWaterStorageOut'][i] < self.param.param['constraints']['operationPointChange']['distillationUpwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(31)
-
-                # Methanol synthesis (mass flow synthesis gas)
-                if resultOpt.dictResult['output']['massFlowSynthesisgasOut'][i+1] - resultOpt.dictResult['output']['massFlowSynthesisgasOut'][i] > self.param.param['constraints']['operationPointChange']['MeOHSynthesisDownwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(32)
-                elif resultOpt.dictResult['output']['massFlowSynthesisgasOut'][i+1] - resultOpt.dictResult['output']['massFlowSynthesisgasOut'][i] < self.param.param['constraints']['operationPointChange']['MeOHSynthesisUpwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(33)
-
-                # Absorption/Desorption (mass flow methanol water in cycle)
-                if resultOpt.dictResult['output']['massFlowMeOHWaterInCycle'][i+1] - resultOpt.dictResult['output']['massFlowMeOHWaterInCycle'][i] > self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleDownwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(34)
-                elif resultOpt.dictResult['output']['massFlowMeOHWaterInCycle'][i+1] - resultOpt.dictResult['output']['massFlowMeOHWaterInCycle'][i] < self.param.param['constraints']['operationPointChange']['MeOHWaterInCycleUpwardBound'] * self.param.param['controlParameters']['timeStep']:
-                    temp.append(35)
-
-            if len(temp):
-                self.dictConstrViolationOutput["Time step: " + str(i)] = temp

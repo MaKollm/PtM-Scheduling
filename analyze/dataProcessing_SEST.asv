@@ -2,7 +2,7 @@ clear all
 
 % Specify the folder containing the MATLAB files
 folderPath = 'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\';
-scenario = ["Case_112_econ"];
+scenario = ["Case_110_econ"];
 
 for j = 1:numel(scenario)
     % List all files in the folder
