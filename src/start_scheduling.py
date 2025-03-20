@@ -49,7 +49,7 @@ strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelde
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
 strPathPPData = r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie' 
-strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v2' 
+strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v2_continuous' 
 strPathAdaptationData = r'C:\PROJEKTE\PTX\Max\22_Adaptation'    
 
 args = [optimizationHorizon, 

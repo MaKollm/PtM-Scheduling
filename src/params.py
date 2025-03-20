@@ -67,39 +67,7 @@ class Param():
         """
 
     def funcUpdateStorageParameters(self, resultOpt, optModel):
-        if self.param['controlParameters']['objectiveFunction'] == 4 or self.param['controlParameters']['objectiveFunction'] == 6 or self.param['controlParameters']['objectiveFunction'] == 10:
-            if optModel.m.status == GRB.INFEASIBLE:
-                resultOpt.dictResult['input']['batterySize'] = self.param['battery']['power']
-
-            self.param['battery']['power'] = resultOpt.dictResult['input']['batterySize']
-            self.param['battery']['minCharge'] = resultOpt.dictResult['input']['batterySize'] * 0.05
-            self.param['battery']['initialCharge'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-            self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
-            self.param['battery']['maxChargeRate'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-            self.param['battery']['maxDischargeRate'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-
-        if self.param['controlParameters']['objectiveFunction'] == 7 or self.param['controlParameters']['objectiveFunction'] == 8:
-            self.param['storageH2']['Volume'] = resultOpt.dictResult['input']['H2StorageSize']
-            self.param['storageH2']['LowerBound'] = 15
-            self.param['storageH2']['UpperBound'] = 35
-            self.param['storageH2']['InitialFillingFactor'] = 0.5
-            self.param['storageH2']['InitialPressure'] = self.param['storageH2']['InitialFillingFactor']*(self.param['storageH2']['UpperBound'] - self.param['storageH2']['LowerBound']) + self.param['storageH2']['LowerBound']
-            self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-
-            
-            self.param['storageMethanolWater']['Volume'] = resultOpt.dictResult['input']['MeOHWaterStorageSize']
-            self.param['storageMethanolWater']['LowerBound'] = 0.01
-            self.param['storageMethanolWater']['UpperBound'] = self.param['storageMethanolWater']['Volume']
-            self.param['storageMethanolWater']['InitialFillingFactor'] = 0.5
-            self.param['storageMethanolWater']['InitialFilling'] = self.param['storageMethanolWater']['InitialFillingFactor']*(self.param['storageMethanolWater']['UpperBound'] - self.param['storageMethanolWater']['LowerBound']) + self.param['storageMethanolWater']['LowerBound']
-            self.param['storageMethanolWater']['InitialDensity'] = 731.972
-
-            self.param['constraints']['hydrogenStorageFillEqual']['LowerBound'] = self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['hydrogenStorageFillEqual']['UpperBound'] = -self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualUpper']
-
-            self.param['constraints']['methanolWaterStorageFillEqual']['LowerBound'] = self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['methanolWaterStorageFillEqual']['UpperBound'] = -self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualUpper']
+        pass
 
 
         
@@ -329,19 +297,8 @@ class Param():
 
         ## Battery
         self.param['battery'] = {}                                                   # https://www.bsl-battery.com/100kwh-commercial-solar-battery-storage.html
-
-        #if j == 0 or j == 4:
-        #    self.param['battery']['power'] = 400
-        #elif j == 1 or j == 5:
-        #    self.param['battery']['power'] = 600
-        #elif j == 2 or j == 6:
-        #    self.param['battery']['power'] = 800
-        #elif j == 3:
-        #    self.param['battery']['power'] = 1000
-
-        #self.param['battery']['power'] = data['input']['batterySize']
-        
-        self.param['battery']['power'] = 6384#50             # kWh
+ 
+        self.param['battery']['power'] = 200#50             # kWh
         self.param['battery']['voltage'] = 512#562          # V  
         self.param['battery']['capacity'] = self.param['battery']['power'] * 1000 / self.param['battery']['voltage']             # Ah
         self.param['battery']['minCharge'] = self.param['battery']['power'] * 0.05#0.01
