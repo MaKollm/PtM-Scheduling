@@ -159,31 +159,39 @@ class Param():
         ## Characteristic field indices
         self.param['charMap'] = {}
 
-        # Characteristic field indices CO2CAP_SYN
-        self.param['charMap']['CO2CAP_SYN'] = {}
-        self.param['charMap']['CO2CAP_SYN']['index'] = {}
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowHydrogenIn'] = 3
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowBiogasIn'] = 2
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowBiogasOut'] = 107
-        self.param['charMap']['CO2CAP_SYN']['index']['moleFractionMethaneBiogasOut'] = 100
-        self.param['charMap']['CO2CAP_SYN']['index']['moleFractionCO2BiogasOut'] = 101
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowSynthesisgasIn'] = 23
-        self.param['charMap']['CO2CAP_SYN']['index']['moleFractionH2Synthesisgas'] = 15
-        self.param['charMap']['CO2CAP_SYN']['index']['moleFractionCO2Synthesisgas'] = 17
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowMethanolWaterStorageIn'] = 79
-        self.param['charMap']['CO2CAP_SYN']['index']['densityMethanolWaterStorageIn'] = 61
-        self.param['charMap']['CO2CAP_SYN']['index']['massFlowSynthesisPurge'] = 135
-        self.param['charMap']['CO2CAP_SYN']['index']['moleFractionCO2SynthesisPurge'] = 129
-        self.param['charMap']['CO2CAP_SYN']['index']['powerPlantComponentsUnit1'] = 154
-        self.param['charMap']['CO2CAP_SYN']['numVars'] = 13
+        # Characteristic field indices CO2CAP
+        self.param['charMap']['CO2CAP'] = {}
+        self.param['charMap']['CO2CAP']['index'] = {}
+        self.param['charMap']['CO2CAP']['index']['massFlowHydrogenIn'] = 3
+        self.param['charMap']['CO2CAP']['index']['massFlowBiogasIn'] = 2
+        self.param['charMap']['CO2CAP']['index']['massFlowBiogasOut'] = 9
+        self.param['charMap']['CO2CAP']['index']['moleFractionMethaneBiogasOut'] = 7
+        self.param['charMap']['CO2CAP']['index']['moleFractionCO2BiogasOut'] = 8
+        self.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasIn'] = 6
+        self.param['charMap']['CO2CAP']['index']['moleFractionH2Synthesisgas'] = 4
+        self.param['charMap']['CO2CAP']['index']['moleFractionCO2Synthesisgas'] = 5
+        self.param['charMap']['CO2CAP']['index']['powerPlantComponentsUnit1'] = 19
+        self.param['charMap']['CO2CAP']['numVars'] = 9
+
+        # Characteristic field indices SYN
+        self.param['charMap']['SYN'] = {}
+        self.param['charMap']['SYN']['index'] = {}
+        self.param['charMap']['SYN']['index']['massFlowSynthesisgasIn'] = 2
+        self.param['charMap']['SYN']['index']['massFlowHdydrogenIn'] = 3
+        self.param['charMap']['SYN']['index']['massFlowMethanolWaterStorageIn'] = 5
+        self.param['charMap']['SYN']['index']['densityMethanolWaterStorageIn'] = 4
+        self.param['charMap']['SYN']['index']['massFlowSynthesisPurge'] = 7
+        self.param['charMap']['SYN']['index']['moleFractionCO2SynthesisPurge'] = 6
+        self.param['charMap']['SYN']['index']['powerPlantComponentsUnit2'] = 20
+        self.param['charMap']['CO2CAP']['numVars'] = 7
 
         # Characteristic field indices DIS
         self.param['charMap']['DIS'] = {}
         self.param['charMap']['DIS']['index'] = {}
         self.param['charMap']['DIS']['index']['massFlowMethanolWaterStorageOut'] = 2
-        self.param['charMap']['DIS']['index']['massFlowMethanolOut'] = 47
-        self.param['charMap']['DIS']['index']['moleFractionMethanolOut'] = 81
-        self.param['charMap']['DIS']['index']['powerPlantComponentsUnit2'] = 80
+        self.param['charMap']['DIS']['index']['massFlowMethanolOut'] = 5
+        self.param['charMap']['DIS']['index']['moleFractionMethanolOut'] = 18
+        self.param['charMap']['DIS']['index']['powerPlantComponentsUnit3'] = 17
         self.param['charMap']['DIS']['numVars'] = 4
 
 
