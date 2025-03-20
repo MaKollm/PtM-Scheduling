@@ -68,7 +68,7 @@ class Optimization_Model():
         
         self.OptVarUsageOfPV = self.m.addVars(self.arrTime,lb=0.0,ub=1000,vtype=GRB.CONTINUOUS)
 
-        #self.OptVarPowerInBatteryBought = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=self.param.param['battery']['maxChargeRate'], vtype=GRB.CONTINUOUS)
+        self.OptVarPowerBought = self.m.addVars(self.arrTime,lb=0.0,ub=100,vtype=GRB.CONTINUOUS)
 
         self.OptVarPowerInBatteryPV = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerInBatteryBought = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
