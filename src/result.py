@@ -262,9 +262,9 @@ class Result():
             self.dictResult['input']['H2StorageSize'] = optModel.OptVarH2StorageSize.X
             self.dictResult['input']['MeOHWaterStorageSize'] = optModel.OptVarMeOHWaterStorageSize.X
 
-            print("#########")
-            print(self.dictResult['input']['H2StorageSize'])
-            print(self.dictResult['input']['MeOHWaterStorageSize'])
+            #print("#########")
+            #print(self.dictResult['input']['H2StorageSize'])
+            #print(self.dictResult['input']['MeOHWaterStorageSize'])
             
 
     def funcPrintResult(self, optModel, cm, elec, pv, pp, ci):

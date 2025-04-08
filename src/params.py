@@ -251,7 +251,7 @@ class Param():
         self.param['pv']['module'] = 'Canadian_Solar_CS5P_220M___2009_'
         self.param['pv']['inverter'] = 'ABB__PVI_3_0_OUTD_S_US__208V_'#'ABB__MICRO_0_25_I_OUTD_US_208__208V_'
         self.param['pv']['powerOfModule'] = 0.22
-        self.param['pv']['powerOfSystem'] = 4427 #* 1.5
+        self.param['pv']['powerOfSystem'] = 500 #* 1.5
         self.param['pv']['numberOfUncertaintySamples'] = 100
         self.param['pv']['alpha'] = 0.9
         self.param['pv']['covariance'] = 8
@@ -341,7 +341,7 @@ class Param():
 
         #self.param['battery']['power'] = data['input']['batterySize']
         
-        self.param['battery']['power'] = 6384#50             # kWh
+        self.param['battery']['power'] = 1000#50             # kWh
         self.param['battery']['voltage'] = 512#562          # V  
         self.param['battery']['capacity'] = self.param['battery']['power'] * 1000 / self.param['battery']['voltage']             # Ah
         self.param['battery']['minCharge'] = self.param['battery']['power'] * 0.05#0.01
@@ -356,11 +356,11 @@ class Param():
 
         ## Constraints
         self.param['constraints'] = {}
-        self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
+        self.param['constraints']['storagesFactorFillEqualLower'] = 0.01
 
         if self.param['controlParameters']['benchmark'] == True:
-            self.param['constraints']['storagesFactorFillEqualLower'] = 0.25
-            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.25
+            self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
+            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
         else:
             self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
             self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
@@ -374,8 +374,12 @@ class Param():
         self.param['constraints']['hydrogenStorageFillEqual']['UpperBound'] = -self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualUpper']
 
         self.param['constraints']['batteryChargeEqual'] = {}
+        #self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
+        #self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
+
         self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
+
 
 
 

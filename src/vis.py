@@ -109,7 +109,7 @@ def visu(result):
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
 
-        # Power of CO2-Capture and Synthesis
+        # Power of Distillation
         plt.subplot(3,1,3)
         plt.plot(result['output']['powerPlantDIS'])
         plt.title('Power Distillation')

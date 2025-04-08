@@ -262,6 +262,7 @@ class Optimization_Model():
                 else:
                     self.m.addConstrs(
                         (self.OptVarPowerElectrolyser[(t-1,n)] == self.OptVarPowerElectrolyser[(t,n)] for t in self.arrTime[2:] for n in elec.arrEnapterModules), "Benchmark power electrolyser")
+                    
                 self.m.addConstrs(
                     (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
             else:
@@ -806,7 +807,7 @@ class Optimization_Model():
 
             electrolyser_sum = 0
             hydrogen_in_sum = 0
-            
+            a = 1
             for t in self.arrTime:
             # Precompute constant terms
 

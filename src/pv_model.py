@@ -81,7 +81,9 @@ class PV():
         poa_data.to_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data.csv")
 
         # PV
-        location = Location(latitude=49.09, longitude=8.44,tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
+        location = Location(latitude=49.09, longitude=8.44,tz='Europe/Berlin',altitude=110, name='KIT Campus Nord') # Karlsruhe
+        # location = Location(latitude=35.341, longitude=25.115,tz='Europe/Athens',altitude=0, name='Heraklion') # Heraklion
+        # location = Location(latitude=60.22, longitude=24.986,tz='Europe/Helsinki',altitude=0, name='Helsinki') # Helsinki
 
         sandia_modules = pvlib.pvsystem.retrieve_sam('SandiaMod')
         sapm_inverters = pvlib.pvsystem.retrieve_sam('cecinverter')

@@ -1,8 +1,9 @@
 clear all
 
 % Specify the folder containing the MATLAB files
-folderPath = 'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\';
-scenario = ["Case_110_econ"];
+folderPath = 'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2_new\';
+scenario = ["Case_1","Case_5"];
+scenario = ["Case_63"];
 
 for j = 1:numel(scenario)
     % List all files in the folder
@@ -10,6 +11,7 @@ for j = 1:numel(scenario)
     
     % Iterate through each file
     for i = 1:length(files)
+        if file ==
         % Get the file name
         filename = files(i).name;
     
@@ -56,7 +58,7 @@ result = [mean(costElectricity(i,:));
 isInf = isinf(gap(i,:));
 idx = [];
 for j = 1:numel(isInf)
-    if isInf(j) == false && gap(i,j) < 1000
+    if isInf(j) == false && gap(i,j) < 1000 %&& methanol(i,j) > 108
         idx = [idx, j];
     end
 end
@@ -68,6 +70,7 @@ result2 = [mean(nonzeros(costElectricity(i,:)));
             sum(numInf)
             sum(numZeros)];
             
+annualMethanol = sum(methanol(i,:))
 
 %%
 
@@ -76,13 +79,347 @@ for i = 1:length(files)
     batterySize(i) = cellInput{1,i}.batterySize;
 end
 
+%% Load characteristic maps
 
-%% Diagramme
+cm_CO2CAP_SYN = readtable("C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v2\PtMCharMap_CO2_Capture_Synthesis.xlsx");
+cm_DIS = readtable("C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v2\PtMCharMap_Distillation.xlsx");
 
-fontSize = 10;
+cm_power_CO2CAP_SYN = cm_CO2CAP_SYN.POWER_ALL(2:end);
+cm_power_DIS = cm_DIS.DUTY_ALL(2:end);
+
+mass_flow_synthesis = cm_CO2CAP_SYN.MIXED_ResolvedMassFlow_ResolvedMassFlow_2(2:end);
+%mass_flow_methanol_water_in_storage = cm_CO2CAP_SYN.
+mass_flow_distillation = cm_DIS.MassComponentFlows_MEOH_MassComponentFlows_MEOH_1(2:end);
+
+
+%% Diagramme new
+
+fontSize = 12;
 path = "C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\02_images\IEEE_SEST_2025";
 
-num = 30;
+num = 16; % 37
+
+
+for k = 1:numel(scenario)
+    for i = 1:size(cellInput{k,num}.operationPoint_CO2CAP_SYN,1)
+        for j = 1:size(cellInput{k,num}.operationPoint_CO2CAP_SYN,2)
+            if int16(cellInput{k,num}.operationPoint_CO2CAP_SYN(i,j)) == 1
+                op_CO2CAP_SYN(i,k) = j;
+                power_CO2CAP_SYN(i,k) = cm_power_CO2CAP_SYN(j);
+                mass_flow_CO2CAP_SYN(i,k) = mass_flow_synthesis(j);
+            end
+        end
+    
+        for j = 1:size(cellInput{k,num}.operationPoint_DIS,2)
+            if int16(cellInput{k,num}.operationPoint_DIS(i,j)) == 1
+                op_DIS(i,k) = j;
+                power_DIS(i,k) = cm_power_DIS(j);
+                mass_flow_DIS(i,k) = mass_flow_distillation(j);
+            end
+        end
+    end
+
+    %cap_CO2CAP_SYN(:,k) = mass_flow_CO2CAP_SYN(:,k) ./ max(mass_flow_CO2CAP_SYN(:,k)) * 100;
+    %cap_DIS(:,k) = mass_flow_DIS(:,k) ./ max(mass_flow_DIS(:,k)) * 100;
+    cap_CO2CAP_SYN(:,k) = mass_flow_CO2CAP_SYN(:,k) ./ max(mass_flow_synthesis) * 100;
+    cap_DIS(:,k) = mass_flow_DIS(:,k) ./ max(mass_flow_distillation) * 100;
+    cap_ELEC(:,k) = cellInput{k,num}.powerElectrolyser ./ 19.2 * 100;
+end
+
+x = [0:120];
+cellParam{1,num}.prices.power(1) = cellParam{1,num}.prices.power(2);
+cellParam{2,num}.prices.power(1) = cellParam{2,num}.prices.power(2);
+
+cellParam{1,num}.carbonIntensity.carbonIntensity(1) = cellParam{1,num}.carbonIntensity.carbonIntensity(2);
+cellParam{2,num}.carbonIntensity.carbonIntensity(1) = cellParam{2,num}.carbonIntensity.carbonIntensity(2);
+
+
+% Operation Mode + Point CO2CAP
+figure
+%plot(cellInput{1,num}.massFlowHydrogenIn,'Color',"#0072BD",'LineWidth',2)
+plot(x,op_CO2CAP_SYN(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle','--')
+grid on
+hold on
+plot(x,op_CO2CAP_SYN(:,2),'Color',"#0072BD",'LineWidth',2,'LineStyle','-')
+%ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Operating point of CO$_2$-Capture and Synthesis",'FontSize',fontSize,'Interpreter','LaTeX');
+yyaxis right
+plot(x,cellInput{1,num}.currentStateCO2CAP_SYN,'Color',"#A2142F",'LineWidth',2,'LineStyle','--')
+plot(x,cellInput{2,num}.currentStateCO2CAP_SYN,'Color',"#A2142F",'LineWidth',2,'LineStyle','-')
+ax = gca;
+ax.YAxis(2).Color = "#A2142F";%"#000000";%"#A2142F";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("State of CO$_2$-Capture and Synthesis",'FontSize',fontSize,'Interpreter','LaTeX')
+yticks([0 1 2 3 4])
+yticklabels({'Off','Startup','Standby','On','Shutdown'})
+legend("operating point - stationary","operating point - flexible", "state - stationary", "state - flexible","Location","best",'FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+ylim([0 4])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\operation_point_state_CO2CAP.fig"));
+exportgraphics(gcf,strcat(path + "\operation_point_state_CO2CAP.eps"),'ContentType','vector','Resolution',600)
+
+
+% Operation Mode + Point DIS
+figure
+%plot(cellInput{1,num}.massFlowHydrogenIn,'Color',"#0072BD",'LineWidth',2)
+plot(x,op_DIS(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle','--')
+grid on
+hold on
+plot(x,op_DIS(:,2),'Color',"#0072BD",'LineWidth',2,'LineStyle','-')
+%ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Operating point of Distillation",'FontSize',fontSize,'Interpreter','LaTeX');
+yyaxis right
+plot(x,cellInput{1,num}.currentStateDIS,'Color',"#A2142F",'LineWidth',2,'LineStyle','--')
+plot(x,cellInput{2,num}.currentStateDIS,'Color',"#A2142F",'LineWidth',2,'LineStyle','-')
+ax = gca;
+ax.YAxis(2).Color = "#A2142F";%"#000000";%"#A2142F";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("State of Distillation",'FontSize',fontSize,'Interpreter','LaTeX')
+yticks([0 1 2 3 4])
+yticklabels({'Off','Startup','Standby','On','Shutdown'})
+legend("operating point - stationary","operating point - flexible", "state - stationary", "state - flexible","Location","best",'FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+ylim([0 4])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\operation_point_state_DIS.fig"));
+exportgraphics(gcf,strcat(path + "\operation_point_state_DIS.eps"),'ContentType','vector','Resolution',600)
+
+
+% Electricity + Price
+figure
+plot(x,cellInput{1,num}.powerBought,'Color',"#0072BD",'LineWidth',2)
+grid on
+hold on
+plot(x,cellInput{2,num}.powerBought,'Color',"#A2142F",'LineWidth',2)
+yline(cellParam{1,num}.peakLoadCapping.maximumLoad,"LineStyle","--",'LineWidth',2)
+text(2,30,"maximum allowed load","Interpreter","latex")
+ylabel("Power consumption (kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylim([0 cellParam{1,num}.peakLoadCapping.maximumLoad/0.8])
+yyaxis right
+plot(x,cellParam{1,num}.prices.power,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','southeast','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_consumption_price_stationary_variable.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_consumption_price_stationary_variable.eps"),'ContentType','vector','Resolution',600)
+
+
+% Electricity + Carbon intensity
+figure
+plot(x,cellInput{1,num}.powerBought,'Color',"#0072BD",'LineWidth',2)
+grid on
+hold on
+plot(x,cellInput{2,num}.powerBought,'Color',"#A2142F",'LineWidth',2)
+ylabel("Power consumption (kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+yyaxis right
+ylim([0 inf])
+plot(x,cellParam{1,num}.carbonIntensity.carbonIntensity,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Carbon intensity (g/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_consumption_carbon_intensity_stationary_variable.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_consumption_carbon_intensity_stationary_variable.eps"),'ContentType','vector','Resolution',600)
+
+
+
+% Electricity + Price als Bar plot aufgeteilt in CO2-CAP, DIS and ELEC
+power = [power_CO2CAP_SYN(:,2),power_DIS(:,2),cellInput{2,num}.powerElectrolyser'];
+
+figure
+bar(x,power,"stacked");
+grid on
+hold on
+ylabel("Power consumption (kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+yyaxis right
+plot(x,cellParam{2,num}.prices.power,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("CO$_2$-Capture and Synthesis","Distillation","Elektrolyser",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_consumption_price_bar_plot.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_consumption_price_bar_plot.eps"),'ContentType','vector','Resolution',600)
+
+
+% Capacity of CO2-CAP + DIS + ELEC
+figure
+plot(x,cap_CO2CAP_SYN(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,cap_CO2CAP_SYN(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+plot(x,cap_DIS(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"--");
+plot(x,cap_DIS(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"--");
+plot(x,cap_ELEC(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"-.");
+plot(x,cap_ELEC(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"-.");
+
+ylabel("Capacity (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("CO$_2$-Capture and Synthesis - stationary", "CO$_2$-Capture and Synthesis - flexible", "Distillation - stationary", "Distillation - flexible","Electrolyser - stationary", "Electrolyser - flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\capacity_plot.fig"));
+exportgraphics(gcf,strcat(path + "\capacity_plot.eps"),'ContentType','vector','Resolution',600)
+
+
+
+
+
+figure
+subplot(3,1,1)
+plot(x,cap_CO2CAP_SYN(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,cap_CO2CAP_SYN(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+ylabel("Capacity (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+title("CO$_2$-Capture and Synthesis","FontSize",fontSize,"Interpreter","latex")
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+
+subplot(3,1,2)
+plot(x,cap_DIS(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,cap_DIS(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+ylabel("Capacity (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+title("Distillation","FontSize",fontSize,"Interpreter","latex")
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+
+subplot(3,1,3)
+plot(x,cap_ELEC(:,1),'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,cap_ELEC(:,2),'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+ylabel("Capacity (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+title("Electrolyser","FontSize",fontSize,"Interpreter","latex")
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+
+savefig(gcf,strcat(path + "\capacity_subplot.fig"));
+exportgraphics(gcf,strcat(path + "\capacity_subplot.eps"),'ContentType','vector','Resolution',600)
+
+% Storage H2 + Methanol Water
+figure
+subplot(2,1,1)
+plot(x,(cellOutput{1,num}.storageH2Pressure - double(cellParam{1,num}.storageH2.LowerBound)) ./ (double(cellParam{1,num}.storageH2.UpperBound) - double(cellParam{1,num}.storageH2.LowerBound)) .* 100,'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,(cellOutput{2,num}.storageH2Pressure  -double(cellParam{2,num}.storageH2.LowerBound)) ./ (double(cellParam{2,num}.storageH2.UpperBound) - double(cellParam{2,num}.storageH2.LowerBound)) .* 100,'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+ylabel("SOC (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible","Elektrolyser",'Location','northeast','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+ylim([0 100]);
+title("Hydrogen storage tank","Interpreter","latex")
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+
+subplot(2,1,2)
+plot(x,cellOutput{1,num}.storageMethanolWaterFilling ./ double(cellParam{1,num}.storageMethanolWater.UpperBound) .* 100,'Color',"#0072BD",'LineWidth',2,'LineStyle',"-");
+grid on
+hold on
+plot(x,cellOutput{2,num}.storageMethanolWaterFilling ./ double(cellParam{2,num}.storageMethanolWater.UpperBound) .* 100,'Color',"#A2142F",'LineWidth',2,'LineStyle',"-");
+ylabel("SOC (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible","Elektrolyser",'Location','northeast','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+ylim([0 100]);
+title("Methanol-water storage tank","Interpreter","latex")
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+
+
+savefig(gcf,strcat(path + "\storage_subplot.fig"));
+exportgraphics(gcf,strcat(path + "\storage_subplot.eps"),'ContentType','vector','Resolution',600)
+
+
+% SOC Battery
+figure
+plot(cellOutput{1,num}.batteryCharge,'Color',"#0072BD",'LineWidth',2)
+grid on
+hold on
+plot(cellOutput{2,num}.batteryCharge,'Color',"#A2142F",'LineWidth',2)
+ylabel("SOC (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+yyaxis right
+plot(cellParam{1,num}.prices.power,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("stationary","flexible",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_price_SOC.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_price_pv.eps"),'ContentType','vector','Resolution',600)
+
+
+% Power from grid + power from pv + electricity price bar plot
+pv = [cellInput{2,num}.powerBought', cellInput{2,num}.usageOfPV'];
+
+figure
+bar(x,pv,"stacked");
+grid on
+hold on
+ylabel("Power (kW)",'FontSize',fontSize,'Interpreter','LaTeX')
+yyaxis right
+plot(x,cellParam{1,num}.prices.power,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("power from grid","power from pv",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_price_pv.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_price_pv.eps"),'ContentType','vector','Resolution',600)
+
+
+% Battery charging + discharging + electricity price bar plot
+battery = [cellInput{2,num}.actualPowerInBatteryBought' + cellInput{2,num}.actualPowerInBatteryPV', cellInput{2,num}.actualPowerOutBattery'];
+
+figure
+bar(x,battery,"stacked");
+grid on
+hold on
+ylabel("power (kW)",'FontSize',fontSize,'Interpreter','LaTeX')
+yyaxis right
+plot(x,cellParam{1,num}.prices.power,'Color',"#EDB120",'LineWidth',2)
+ax = gca;
+ax.YAxis(2).Color = "#EDB120";
+
+xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+legend("charging","discharging",'Location','best','FontSize',fontSize,'Interpreter','LaTeX')
+xlim([x(1) x(end)])
+set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+savefig(gcf,strcat(path + "\electricity_price_battery.fig"));
+exportgraphics(gcf,strcat(path + "\electricity_price_battery.eps"),'ContentType','vector','Resolution',600)
+
+% Battery charging + discharging + electricity price bar plot + SOC??
+
+%% Diagramme 
 
 % figure('Position',[10 10 560 250])
 % plot(1:120,power,'LineWidth',2)
