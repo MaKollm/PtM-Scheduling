@@ -36,21 +36,21 @@ class Result():
         
         # Input variables
         if optModel.m.Status == GRB.OPTIMAL or (optModel.m.Status == GRB.TIME_LIMIT and optModel.m.SolCount > 0):
-            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP_SYN)
-            self.dictResult['input']['operationPoint_CO2CAP_SYN'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP_SYN)))
+            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP)
+            self.dictResult['input']['operationPoint_CO2CAP'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP)))
             self.dictResult['input']['massFlowBiogasIn'] = []
             for i in self.arrTime:
-                for j in cm.arrOperationPointsCO2CAP_SYN:
-                    self.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] = solution[i,j]
+                for j in cm.arrOperationPointsCO2CAP:
+                    self.dictResult['input']['operationPoint_CO2CAP'][i,j] = solution[i,j]
                     if solution[i,j] == 1:
                         self.dictResult['input']['massFlowBiogasIn'].append(cm.arrBiogasInValuesConversion[j])
 
-            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP_SYN)
-            self.dictResult['input']['operationPoint_CO2CAP_SYN'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP_SYN)))
+            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP)
+            self.dictResult['input']['operationPoint_CO2CAP'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP)))
             self.dictResult['input']['massFlowHydrogenIn'] = []
             for i in self.arrTime:
-                for j in cm.arrOperationPointsCO2CAP_SYN:
-                    self.dictResult['input']['operationPoint_CO2CAP_SYN'][i,j] = solution[i,j]
+                for j in cm.arrOperationPointsCO2CAP:
+                    self.dictResult['input']['operationPoint_CO2CAP'][i,j] = solution[i,j]
                     if solution[i,j] == 1:
                         self.dictResult['input']['massFlowHydrogenIn'].append(cm.arrHydrogenInValuesConversion[j])
 
@@ -65,15 +65,35 @@ class Result():
                         self.dictResult['input']['massFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
 
 
-            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateCO2CAP_SYN)
-            self.dictResult['input']['currentStateCO2CAP_SYNRaw'] = np.empty(shape=(len(self.arrTime),5))
-            self.dictResult['input']['currentStateCO2CAP_SYN'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointSYN)
+            self.dictResult['input']['operationPoint_SYN'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsSYN)))
+            self.dictResult['input']['massFlowSynthesisgasIn'] = []
+            for i in self.arrTime:
+                for j in cm.arrOperationPointsSYN:
+                    self.dictResult['input']['operationPoint_SYN'][i,j] = solution[i,j]
+                    if int(solution[i,j]) == 1:
+                        self.dictResult['input']['massFlowSynthesisgasIn'].append(cm.arrSynthesisgasInValuesConversion[j])
+
+
+            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateCO2CAP)
+            self.dictResult['input']['currentStateCO2CAPRaw'] = np.empty(shape=(len(self.arrTime),5))
+            self.dictResult['input']['currentStateCO2CAP'] = []
             for i in self.arrTime:
                 for j in range(0,5):
                     if solution[i,j] == 1:
-                        self.dictResult['input']['currentStateCO2CAP_SYN'].append(j)
+                        self.dictResult['input']['currentStateCO2CAP'].append(j)
 
-                    self.dictResult['input']['currentStateCO2CAP_SYNRaw'][i,j] = solution[i,j]
+                    self.dictResult['input']['currentStateCO2CAPRaw'][i,j] = solution[i,j]
+
+            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateSYN)
+            self.dictResult['input']['currentStateSYNRaw'] = np.empty(shape=(len(self.arrTime),5))
+            self.dictResult['input']['currentStateSYN'] = []
+            for i in self.arrTime:
+                for j in range(0,5):
+                    if solution[i,j] == 1:
+                        self.dictResult['input']['currentStateSYN'].append(j)
+
+                    self.dictResult['input']['currentStateSYNRaw'][i,j] = solution[i,j]
 
             solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateDIS)
             self.dictResult['input']['currentStateDISRaw'] = np.empty(shape=(len(self.arrTime),5))
@@ -85,19 +105,34 @@ class Result():
 
                     self.dictResult['input']['currentStateDISRaw'][i,j] = solution[i,j]
 
-            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateSwitchCO2CAP_SYN)
-            self.dictResult['input']['currentStateSwitchCO2CAP_SYNRaw'] = np.empty(shape=(len(self.arrTime),5,5))
-            self.dictResult['input']['currentStateSwitchCO2CAP_SYN'] = []
+
+            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateSwitchCO2CAP)
+            self.dictResult['input']['currentStateSwitchCO2CAPRaw'] = np.empty(shape=(len(self.arrTime),5,5))
+            self.dictResult['input']['currentStateSwitchCO2CAP'] = []
             for i in self.arrTime:
                 for j in range(0,5):
                     for k in range(0,5):
                         if solution[i,j,k] == 1:
-                            self.dictResult['input']['currentStateSwitchCO2CAP_SYN'].append((j,k))
+                            self.dictResult['input']['currentStateSwitchCO2CAP'].append((j,k))
                         else:
-                            self.dictResult['input']['currentStateSwitchCO2CAP_SYN'].append((-1,-1))
+                            self.dictResult['input']['currentStateSwitchCO2CAP'].append((-1,-1))
 
-                        self.dictResult['input']['currentStateSwitchCO2CAP_SYNRaw'][i,j,k] = solution[i,j,k]
+                        self.dictResult['input']['currentStateSwitchCO2CAPRaw'][i,j,k] = solution[i,j,k]
                         
+
+            solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateSwitchSYN)
+            self.dictResult['input']['currentStateSwitchSYNRaw'] = np.empty(shape=(len(self.arrTime),5,5))
+            self.dictResult['input']['currentStateSwitchSYN'] = []
+            for i in self.arrTime:
+                for j in range(0,5):
+                    for k in range(0,5):
+                        if solution[i,j,k] == 1:
+                            self.dictResult['input']['currentStateSwitchSYN'].append((j,k))
+                        else:
+                            self.dictResult['input']['currentStateSwitchSYN'].append((-1,-1))
+
+                        self.dictResult['input']['currentStateSwitchSYNRaw'][i,j,k] = solution[i,j,k]
+
 
             solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateSwitchDIS)
             self.dictResult['input']['currentStateSwitchDISRaw'] = np.empty(shape=(len(self.arrTime),5,5))
@@ -256,16 +291,7 @@ class Result():
             for i in self.arrTime:
                 self.dictResult['input']['actualPowerOutBatterySold'].append(solution[i])
 
-
-            self.dictResult['input']['pvSize'] = optModel.OptVarPVSize.X
-            self.dictResult['input']['batterySize'] = optModel.OptVarBatterySize.X
-            self.dictResult['input']['H2StorageSize'] = optModel.OptVarH2StorageSize.X
-            self.dictResult['input']['MeOHWaterStorageSize'] = optModel.OptVarMeOHWaterStorageSize.X
-
-            print("#########")
-            print(self.dictResult['input']['H2StorageSize'])
-            print(self.dictResult['input']['MeOHWaterStorageSize'])
-            
+      
 
     def funcPrintResult(self, optModel, cm, elec, pv, pp, ci):
         
@@ -276,11 +302,6 @@ class Result():
         #        print(key)
         #        print(self.dictResult['input'][key])
         #        print('----------')
-
-        print('PV Size')
-        print(self.dictResult['input']['pvSize'])
-        print('Battery Size')
-        print(self.dictResult['input']['batterySize'])
 
         ########## Output ###########
         print('Output variables')
@@ -383,8 +404,14 @@ class Result():
         with open('input_data.pkl','wb') as f:
             pickle.dump(self.dictResult,f)
 
+        with open('param_data.pkl','wb') as f:
+            pickle.dump(self.param.param,f)
+
         with open('input_data_' + date_time + '.pkl', 'wb') as f:
             pickle.dump(self.dictResult,f)
+
+        with open('param_data_' + date_time + '.pkl', 'wb') as f:
+            pickle.dump(self.param.param,f)
 
     
     def funcVisualizationResult(self, OptModel, cm, elec, pv, pp, ci):
@@ -392,6 +419,6 @@ class Result():
         ###################################
         ########## Visualization ########## 
 
-        #visu(self.dictResult)
+        visu(self.dictResult)
         pass
     

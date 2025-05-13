@@ -18,10 +18,10 @@ def load_and_visu():
 def visu(result):
 
         plt.figure(1)
-        # State of CO2-Capture and Synthesis
+        # State of CO2-Capture
         plt.subplot(2,2,1)
-        plt.plot(result['input']['currentStateCO2CAP_SYN'])
-        plt.title('State of the CO2-Capture and Synthesis')
+        plt.plot(result['input']['currentStateCO2CAP'])
+        plt.title('State of the CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('state')
 
@@ -32,10 +32,10 @@ def visu(result):
         plt.xlabel('time in h')
         plt.ylabel('state')
 
-        # Operation point of CO2-Capture and Synthesis
+        # Operation point of CO2-Capture
         plt.subplot(2,2,3)
         plt.plot(result['input']['massFlowBiogasIn'])
-        plt.title('Operation point of the CO2-Capture and Synthesis')
+        plt.title('Operation point of the CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('operation point')
 
@@ -104,7 +104,7 @@ def visu(result):
 
         # Power of CO2-Capture and Synthesis
         plt.subplot(3,1,2)
-        plt.plot(result['output']['powerPlantCO2CAP_SYN'])
+        plt.plot(result['output']['powerPlantCO2CAP'])
         plt.title('Power CO2-Capture and Synthesis')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')

@@ -49,6 +49,7 @@ class Param():
         """
         if iteration > 0:
             self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+            self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
             outputData = sio.loadmat(r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM\data_opt_trueCharMap')
             
             for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']+1):
@@ -66,41 +67,6 @@ class Param():
                 self.param['storageSynthesisgas']['InitialFilling'] = self.param['storageSynthesisgas']['InitialPressure']*100000*self.param['storageSynthesisgas']['Volume'] / (self.param['R_Synthesisgas']*(self.param['Tamb'] + self.param['T0']))
         """
 
-    def funcUpdateStorageParameters(self, resultOpt, optModel):
-        if self.param['controlParameters']['objectiveFunction'] == 4 or self.param['controlParameters']['objectiveFunction'] == 6 or self.param['controlParameters']['objectiveFunction'] == 10:
-            if optModel.m.status == GRB.INFEASIBLE:
-                resultOpt.dictResult['input']['batterySize'] = self.param['battery']['power']
-
-            self.param['battery']['power'] = resultOpt.dictResult['input']['batterySize']
-            self.param['battery']['minCharge'] = resultOpt.dictResult['input']['batterySize'] * 0.05
-            self.param['battery']['initialCharge'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-            self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
-            self.param['battery']['maxChargeRate'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-            self.param['battery']['maxDischargeRate'] = resultOpt.dictResult['input']['batterySize'] * 0.5
-
-        if self.param['controlParameters']['objectiveFunction'] == 7 or self.param['controlParameters']['objectiveFunction'] == 8:
-            self.param['storageH2']['Volume'] = resultOpt.dictResult['input']['H2StorageSize']
-            self.param['storageH2']['LowerBound'] = 15
-            self.param['storageH2']['UpperBound'] = 35
-            self.param['storageH2']['InitialFillingFactor'] = 0.5
-            self.param['storageH2']['InitialPressure'] = self.param['storageH2']['InitialFillingFactor']*(self.param['storageH2']['UpperBound'] - self.param['storageH2']['LowerBound']) + self.param['storageH2']['LowerBound']
-            self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-
-            
-            self.param['storageMethanolWater']['Volume'] = resultOpt.dictResult['input']['MeOHWaterStorageSize']
-            self.param['storageMethanolWater']['LowerBound'] = 0.01
-            self.param['storageMethanolWater']['UpperBound'] = self.param['storageMethanolWater']['Volume']
-            self.param['storageMethanolWater']['InitialFillingFactor'] = 0.5
-            self.param['storageMethanolWater']['InitialFilling'] = self.param['storageMethanolWater']['InitialFillingFactor']*(self.param['storageMethanolWater']['UpperBound'] - self.param['storageMethanolWater']['LowerBound']) + self.param['storageMethanolWater']['LowerBound']
-            self.param['storageMethanolWater']['InitialDensity'] = 731.972
-
-            self.param['constraints']['hydrogenStorageFillEqual']['LowerBound'] = self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['hydrogenStorageFillEqual']['UpperBound'] = -self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualUpper']
-
-            self.param['constraints']['methanolWaterStorageFillEqual']['LowerBound'] = self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualLower']
-            self.param['constraints']['methanolWaterStorageFillEqual']['UpperBound'] = -self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualUpper']
-
 
         
     def funcGet(self, j):
@@ -110,9 +76,9 @@ class Param():
 
         # Production constants
         self.param['production'] = {}
-        self.param['production']['minMethanolBenchmark'] = 100
-        self.param['production']['minMethanolOpt'] = 108.065 #113.75 #108.065
-        self.param['production']['methanol'] = 37.876913040000005      
+        self.param['production']['minMethanolBenchmark'] = 10
+        self.param['production']['minMethanolOpt'] = 100 #113.75 #108.065
+        self.param['production']['methanol'] = 0      
         
         
         ## Methanol
@@ -134,6 +100,7 @@ class Param():
         self.param['controlParameters']['testFeasibility'] = self.testFeasibility
         self.param['controlParameters']['numHoursToSimulate'] = self.numHoursToSimulate
         self.param['controlParameters']['numTimeStepsToSimulate'] = int(self.numHoursToSimulate / self.timeStep)
+        self.param['controlParameters']['numTimeStepsToHorizonEnd'] = int(self.numHoursToSimulate / self.timeStep)
         self.param['controlParameters']['objectiveFunction'] = self.objectiveFunction
         self.param['controlParameters']['benchmark'] = self.benchmark
         self.param['controlParameters']['sameOutputAsBenchmark'] = self.sameOutputAsBenchmark
@@ -177,13 +144,13 @@ class Param():
         self.param['charMap']['SYN'] = {}
         self.param['charMap']['SYN']['index'] = {}
         self.param['charMap']['SYN']['index']['massFlowSynthesisgasIn'] = 2
-        self.param['charMap']['SYN']['index']['massFlowHdydrogenIn'] = 3
+        self.param['charMap']['SYN']['index']['massFlowHydrogenIn'] = 3
         self.param['charMap']['SYN']['index']['massFlowMethanolWaterStorageIn'] = 5
         self.param['charMap']['SYN']['index']['densityMethanolWaterStorageIn'] = 4
         self.param['charMap']['SYN']['index']['massFlowSynthesisPurge'] = 7
         self.param['charMap']['SYN']['index']['moleFractionCO2SynthesisPurge'] = 6
         self.param['charMap']['SYN']['index']['powerPlantComponentsUnit2'] = 20
-        self.param['charMap']['CO2CAP']['numVars'] = 7
+        self.param['charMap']['SYN']['numVars'] = 7
 
         # Characteristic field indices DIS
         self.param['charMap']['DIS'] = {}
@@ -253,39 +220,37 @@ class Param():
         self.param['peakLoadCapping']['maximumLoad'] = 0.8 * 50         # with 50kW being the maximum power input of the whole plant
 
 
+        
+        ## Carbon intensity
+        self.param['carbonIntensity'] = {}
+        self.param['carbonIntensity']['numberOfUncertaintySamples'] = 100
+
+
 
         ## PV
         self.param['pv'] = {}
         self.param['pv']['module'] = 'Canadian_Solar_CS5P_220M___2009_'
         self.param['pv']['inverter'] = 'ABB__PVI_3_0_OUTD_S_US__208V_'#'ABB__MICRO_0_25_I_OUTD_US_208__208V_'
         self.param['pv']['powerOfModule'] = 0.22
-        self.param['pv']['powerOfSystem'] = 4427 #* 1.5
+        self.param['pv']['powerOfSystem'] = 100
         self.param['pv']['numberOfUncertaintySamples'] = 100
         self.param['pv']['alpha'] = 0.9
         self.param['pv']['covariance'] = 8
 
-        #if j == 0 or j == 1 or j == 2 or j == 3:
-        #    self.param['pv']['powerOfSystem'] = 100
-        #elif j == 4 or j == 5 or j == 6:
-        #    self.param['pv']['powerOfSystem'] = 500
-
-        #pkl_files = [f for f in os.listdir(r'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\Case_99_econ') if f.endswith('.pkl')]
-        #pkl_files.sort(key=lambda x: os.path.getctime(os.path.join(r'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\Case_99_econ', x)))
-
-        #file_path = os.path.join(r'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\Case_99_econ', pkl_files[j])
-        #with open(file_path, 'rb') as f:
-        #    data = pickle.load(f)
-
-        #self.param['pv']['powerOfSystem'] = data['input']['pvSize']
-
         
-
-
-
-        ## Carbon intensity
-        self.param['carbonIntensity'] = {}
-        self.param['carbonIntensity']['numberOfUncertaintySamples'] = 100
-
+        
+        ## Battery
+        self.param['battery'] = {}                                                   # https://www.bsl-battery.com/100kwh-commercial-solar-battery-storage.html
+        self.param['battery']['power'] = 6384#50             # kWh
+        self.param['battery']['voltage'] = 512#562          # V  
+        self.param['battery']['capacity'] = self.param['battery']['power'] * 1000 / self.param['battery']['voltage']             # Ah
+        self.param['battery']['minCharge'] = self.param['battery']['power'] * 0.05#0.01
+        self.param['battery']['efficiency'] = 0.9#1
+        self.param['battery']['maxChargeRate'] = self.param['battery']['power'] * 0.5#10          # kW
+        self.param['battery']['minChargeRate'] = 2#self.param['battery']['power'] * 0.01#1          # kW                # Annahme (aktuell nicht genutzt)
+        self.param['battery']['maxDischargeRate'] = self.param['battery']['power'] * 0.5#10        # kW
+        self.param['battery']['minDischargeRate'] = 2#self.param['battery']['power'] * 0.01#1       # kW                # Annahme (aktuell nicht genutzt)
+        self.param['battery']['initialCharge'] = 0.5*self.param['battery']['capacity'] * self.param['battery']['voltage'] / 1000
 
 
         ## Storages
@@ -335,53 +300,32 @@ class Param():
 
 
 
-        ## Battery
-        self.param['battery'] = {}                                                   # https://www.bsl-battery.com/100kwh-commercial-solar-battery-storage.html
-
-        #if j == 0 or j == 4:
-        #    self.param['battery']['power'] = 400
-        #elif j == 1 or j == 5:
-        #    self.param['battery']['power'] = 600
-        #elif j == 2 or j == 6:
-        #    self.param['battery']['power'] = 800
-        #elif j == 3:
-        #    self.param['battery']['power'] = 1000
-
-        #self.param['battery']['power'] = data['input']['batterySize']
-        
-        self.param['battery']['power'] = 6384#50             # kWh
-        self.param['battery']['voltage'] = 512#562          # V  
-        self.param['battery']['capacity'] = self.param['battery']['power'] * 1000 / self.param['battery']['voltage']             # Ah
-        self.param['battery']['minCharge'] = self.param['battery']['power'] * 0.05#0.01
-        self.param['battery']['efficiency'] = 0.9#1
-        self.param['battery']['maxChargeRate'] = self.param['battery']['power'] * 0.5#10          # kW
-        self.param['battery']['minChargeRate'] = 2#self.param['battery']['power'] * 0.01#1          # kW                # Annahme (aktuell nicht genutzt)
-        self.param['battery']['maxDischargeRate'] = self.param['battery']['power'] * 0.5#10        # kW
-        self.param['battery']['minDischargeRate'] = 2#self.param['battery']['power'] * 0.01#1       # kW                # Annahme (aktuell nicht genutzt)
-        self.param['battery']['initialCharge'] = 0.5*self.param['battery']['capacity'] * self.param['battery']['voltage'] / 1000
-
-
-
         ## Constraints
         self.param['constraints'] = {}
         self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
 
         if self.param['controlParameters']['benchmark'] == True:
-            self.param['constraints']['storagesFactorFillEqualLower'] = 0.25
-            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.25
+            self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
+            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.1
         else:
             self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
             self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
 
         self.param['constraints']['methanolWaterStorageFillEqual'] = {}
+        self.param['constraints']['methanolWaterStorageEqualValue'] =  self.param['storageMethanolWater']['InitialFilling']
+        self.param['constraints']['methanolWaterStorageEqualTime'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
         self.param['constraints']['methanolWaterStorageFillEqual']['LowerBound'] = self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['methanolWaterStorageFillEqual']['UpperBound'] = -self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualUpper']
 
         self.param['constraints']['hydrogenStorageFillEqual'] = {}
+        self.param['constraints']['hydrogenStorageEqualValue'] =  self.param['storageH2']['InitialPressure']
+        self.param['constraints']['hydrogenStorageEqualTime'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
         self.param['constraints']['hydrogenStorageFillEqual']['LowerBound'] = self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['hydrogenStorageFillEqual']['UpperBound'] = -self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualUpper']
 
         self.param['constraints']['batteryChargeEqual'] = {}
+        self.param['constraints']['batteryChargeEqualValue'] =  self.param['battery']['initialCharge']
+        self.param['constraints']['batteryChargeEqualValue'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
         self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
 
@@ -389,30 +333,56 @@ class Param():
 
 
         self.param['constraints']['transitionTimes'] = {}
-        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_SYN_Off'] = [int(1 / self.param['controlParameters']['timeStep']),
+        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Off'] = [int(1 / self.param['controlParameters']['timeStep']),
                                                                                          int(1 / self.param['controlParameters']['timeStep']),
                                                                                          int(1 / self.param['controlParameters']['timeStep']),
                                                                                          int(1 / self.param['controlParameters']['timeStep']),
                                                                                          int(1 / self.param['controlParameters']['timeStep'])]
-        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_SYN_Startup'] = [int(12 / self.param['controlParameters']['timeStep']), #12
+        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Startup'] = [int(6 / self.param['controlParameters']['timeStep']), #6
                                                                                              int(1 / self.param['controlParameters']['timeStep']),
-                                                                                             int(4 / self.param['controlParameters']['timeStep']), #4
-                                                                                             int(1 / self.param['controlParameters']['timeStep']),
-                                                                                             int(1 / self.param['controlParameters']['timeStep'])]
-        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_SYN_Standby'] = [int(1 / self.param['controlParameters']['timeStep']),
-                                                                                             int(1 / self.param['controlParameters']['timeStep']),
-                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(2 / self.param['controlParameters']['timeStep']), #2
                                                                                              int(1 / self.param['controlParameters']['timeStep']),
                                                                                              int(1 / self.param['controlParameters']['timeStep'])]
-        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_SYN_On'] = [int(1 / self.param['controlParameters']['timeStep']),
+        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Standby'] = [int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep'])]
+        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_On'] = [int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(1 / self.param['controlParameters']['timeStep'])]
-        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_SYN_Shutdown'] = [int(1 / self.param['controlParameters']['timeStep']),
+        self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Shutdown'] = [int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(1 / self.param['controlParameters']['timeStep']),
                                                                                         int(4 / self.param['controlParameters']['timeStep']),   #4
                                                                                         int(6 / self.param['controlParameters']['timeStep']),   #6
+                                                                                        int(1 / self.param['controlParameters']['timeStep'])]
+        
+        self.param['constraints']['transitionTimes']['minStayTimeSYN_Off'] = [int(1 / self.param['controlParameters']['timeStep']),
+                                                                                         int(1 / self.param['controlParameters']['timeStep']),
+                                                                                         int(1 / self.param['controlParameters']['timeStep']),
+                                                                                         int(1 / self.param['controlParameters']['timeStep']),
+                                                                                         int(1 / self.param['controlParameters']['timeStep'])]
+        self.param['constraints']['transitionTimes']['minStayTimeSYN_Startup'] = [int(12 / self.param['controlParameters']['timeStep']), #12
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(4 / self.param['controlParameters']['timeStep']), #4
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep'])]
+        self.param['constraints']['transitionTimes']['minStayTimeSYN_Standby'] = [int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep']),
+                                                                                             int(1 / self.param['controlParameters']['timeStep'])]
+        self.param['constraints']['transitionTimes']['minStayTimeSYN_On'] = [int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(1 / self.param['controlParameters']['timeStep'])]
+        self.param['constraints']['transitionTimes']['minStayTimeSYN_Shutdown'] = [int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(1 / self.param['controlParameters']['timeStep']),
+                                                                                        int(8 / self.param['controlParameters']['timeStep']),   #8
+                                                                                        int(10 / self.param['controlParameters']['timeStep']),   #10
                                                                                         int(1 / self.param['controlParameters']['timeStep'])]
 
         self.param['constraints']['transitionTimes']['minStayTimeDIS_Off'] = [int(1 / self.param['controlParameters']['timeStep']),
@@ -441,27 +411,53 @@ class Param():
                                                                                         int(4 / self.param['controlParameters']['timeStep']),   #4
                                                                                         int(1 / self.param['controlParameters']['timeStep'])]
         
-        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_SYN_Off'] = [self.optimizationHorizon,
+        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Off'] = [self.optimizationHorizon,
                                                                                          self.optimizationHorizon,
                                                                                          self.optimizationHorizon,
                                                                                          self.optimizationHorizon,
                                                                                          self.optimizationHorizon]
-        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_SYN_Startup'] = [int(12 / self.param['controlParameters']['timeStep']),
+        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Startup'] = [int(12 / self.param['controlParameters']['timeStep']),
                                                                                             self.optimizationHorizon,
                                                                                             int(4 / self.param['controlParameters']['timeStep']),
                                                                                             self.optimizationHorizon,
                                                                                             self.optimizationHorizon]
-        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_SYN_Standby'] = [self.optimizationHorizon,
+        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Standby'] = [self.optimizationHorizon,
                                                                                             self.optimizationHorizon,
                                                                                             self.optimizationHorizon,
                                                                                             self.optimizationHorizon,
                                                                                             self.optimizationHorizon]
-        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_SYN_On'] = [self.optimizationHorizon,
+        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_On'] = [self.optimizationHorizon,
                                                                                                 self.optimizationHorizon,
                                                                                                 self.optimizationHorizon,
                                                                                                 self.optimizationHorizon,
                                                                                                 self.optimizationHorizon]
-        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_SYN_Shutdown'] = [self.optimizationHorizon,
+        self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Shutdown'] = [self.optimizationHorizon,
+                                                                                                self.optimizationHorizon,
+                                                                                                int(4 / self.param['controlParameters']['timeStep']),
+                                                                                                int(6 / self.param['controlParameters']['timeStep']),
+                                                                                                self.optimizationHorizon]
+        
+        self.param['constraints']['transitionTimes']['maxStayTimeSYN_Off'] = [self.optimizationHorizon,
+                                                                                         self.optimizationHorizon,
+                                                                                         self.optimizationHorizon,
+                                                                                         self.optimizationHorizon,
+                                                                                         self.optimizationHorizon]
+        self.param['constraints']['transitionTimes']['maxStayTimeSYN_Startup'] = [int(12 / self.param['controlParameters']['timeStep']),
+                                                                                            self.optimizationHorizon,
+                                                                                            int(4 / self.param['controlParameters']['timeStep']),
+                                                                                            self.optimizationHorizon,
+                                                                                            self.optimizationHorizon]
+        self.param['constraints']['transitionTimes']['maxStayTimeSYN_Standby'] = [self.optimizationHorizon,
+                                                                                            self.optimizationHorizon,
+                                                                                            self.optimizationHorizon,
+                                                                                            self.optimizationHorizon,
+                                                                                            self.optimizationHorizon]
+        self.param['constraints']['transitionTimes']['maxStayTimeSYN_On'] = [self.optimizationHorizon,
+                                                                                                self.optimizationHorizon,
+                                                                                                self.optimizationHorizon,
+                                                                                                self.optimizationHorizon,
+                                                                                                self.optimizationHorizon]
+        self.param['constraints']['transitionTimes']['maxStayTimeSYN_Shutdown'] = [self.optimizationHorizon,
                                                                                                 self.optimizationHorizon,
                                                                                                 int(4 / self.param['controlParameters']['timeStep']),
                                                                                                 int(6 / self.param['controlParameters']['timeStep']),

@@ -31,17 +31,17 @@ optimalityGap = 0.01                        # Optimality gap for the solver to t
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
 
-objectiveFunction = 3                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
+objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
 benchmark = True                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
 testFeasibility = False                     # If true the optimization model will be tested for feasibility
 rateOfChangeConstranints = False            # If true rate of change constraints will be considered
-transitionConstraints = True                # If true transition constraints will be considered
+transitionConstraints = False                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
-powerPurchase = False                        # If true purchase of power from the grid will be considered
-considerPV = True                          # If true pv data will be considered, otherwise it is set to zero
-considerBattery = True                     # If true battery will be considered, otherwise it is set to zero
+powerPurchase = True                        # If true purchase of power from the grid will be considered
+considerPV = False                          # If true pv data will be considered, otherwise it is set to zero
+considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
 strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
@@ -155,8 +155,6 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
         resultOpt = Result(param)
         resultOpt.funcGetResult(optModel, cm, elec, pv, pp, ci)
     
-    # Anpassen der Parameter
-    param.funcUpdateStorageParameters(resultOpt, optModel)
 
     ########## Simulation ##########
     simulation = Simulation(param)
@@ -196,25 +194,24 @@ def main(argWorkflow):
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 52
-        startDrift = 10
-        endDrift = 15
-        startCalculation = 5
+        numberOfIterations = 1
+
 
         bUseCalcCharMap = False
         bUseDriftCharMap = False
         
 
         if scheduleMoreTimes == True:
-            for i in [19,28]:
-            #for i in [19,20,21,22,23,24,28]:
-            #for i in range(0, numberOfIterations):           
+            for i in range(0, numberOfIterations):           
                 dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)        
             #     dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,j], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
-
         else:
             dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
             
+
+        startDrift = 10
+        endDrift = 15
+        startCalculation = 5
 
         if useAdaptation == True:
             path = r'C:\PROJEKTE\PTX\Max\22_Adaptation\src'
