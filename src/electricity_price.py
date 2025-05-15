@@ -81,23 +81,27 @@ class PowerPrice():
             data = pd.DataFrame(index=time_index)
             data["Day Ahead Price (DE/LU)"] = prices
 
+        #print(data["Day Ahead Price (DE/LU)"] )
+
+
         #delete NaN values
         mask_none = data["Day Ahead Price (DE/LU)"].notna()
         data = data[mask_none]
 
         #evaluate mean value as "forecast" and standard deviation - forecast one week
-        prices_mean = np.zeros(24*7)
-        prices_mean_std = np.zeros(24*7)
+        prices_mean = np.zeros(24*7,dtype=float)
+        prices_mean_std = np.zeros(24*7,dtype=float)
 
         #calculate mean value of numWeeksToConsider Weeks
-        prices_mean += data["Day Ahead Price (DE/LU)"].to_numpy()[-24*7:]/numWeeksToConsider
+        #print(data["Day Ahead Price (DE/LU)"] ,len(data["Day Ahead Price (DE/LU)"]))
+        prices_mean += data["Day Ahead Price (DE/LU)"].to_numpy(dtype=np.float64)[-24*7:]/numWeeksToConsider
         for i in range(1,numWeeksToConsider):
-            prices_mean += data["Day Ahead Price (DE/LU)"].to_numpy()[-24*7*(i+1):-24*7*i]/numWeeksToConsider
+            prices_mean += data["Day Ahead Price (DE/LU)"].to_numpy(dtype=np.float64)[-24*7*(i+1):-24*7*i]/numWeeksToConsider
 
         #calculate standard deviation of numWeeksToConsider Weeks
-        prices_mean_std += (prices_mean - data["Day Ahead Price (DE/LU)"].to_numpy()[-24*7:])**2
+        prices_mean_std += (prices_mean - data["Day Ahead Price (DE/LU)"].to_numpy(dtype=np.float64)[-24*7:])**2
         for i in range(1,numWeeksToConsider):
-            prices_mean_std += (prices_mean - data["Day Ahead Price (DE/LU)"].to_numpy()[-24*7*(i+1):-24*7*i])**2
+            prices_mean_std += (prices_mean - data["Day Ahead Price (DE/LU)"].to_numpy(dtype=np.float64)[-24*7*(i+1):-24*7*i])**2
         prices_mean_std = np.sqrt(prices_mean_std)
 
         start_data_forecast = data.index[-1] + timedelta(hours=1)
@@ -117,9 +121,11 @@ class PowerPrice():
                 add_data = data["Day Ahead Price (DE/LU)"][-24:]
 
 
-        data_forecast_total = pd.DataFrame(index = pd.concat([pd.Series(add_time),pd.Series(data_forecast.index)]))
-        data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
-        data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
+            data_forecast_total = pd.DataFrame(index = pd.concat([pd.Series(add_time),pd.Series(data_forecast.index)]))
+            data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
+            data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
+        else:
+            data_forecast_total = data_forecast
 
         return data_forecast_total
 
@@ -138,6 +144,7 @@ class PowerPrice():
 
 
     #redefine to make uncertainty related to last weeks?
+    #same as realData
     def funcAddUncertainty(self):
         arrCov = np.zeros((len(self.arrPowerPriceHourly),len(self.arrPowerPriceHourly)))
         arrMean = np.zeros(arrCov.shape[0])
