@@ -110,9 +110,11 @@ class PowerPrice():
         data_forecast["prices"] = prices_mean
         data_forecast["prices_std"] = prices_mean_std
 
+
+
         #check if today/tomorrow is in data_forecast, if not add the existing prices from data in front of data_forecast
-        if np.datetime64(today + timedelta(days=1)) not in data_forecast.index:
-            if np.datetime64(today) not in data_forecast.index:
+        if np.datetime64(today) not in data_forecast.index:
+            if np.datetime64(today +timedelta(days=1)) not in data_forecast.index:
                 add_time = pd.date_range(start=today,periods=48,freq="h")
                 add_data = data["Day Ahead Price (DE/LU)"][-48:]
                 print(len(add_time),len(add_data))
