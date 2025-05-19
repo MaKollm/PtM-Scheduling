@@ -1,10 +1,11 @@
 #!/usr/bin/env python3.10
 
 import scipy.io as sio
-import gurobipy as gp
+import pandas as pd
 import os
 import pickle
 from gurobipy import GRB
+from datetime import  date, datetime, timedelta
 
 class Param():
 
@@ -19,53 +20,62 @@ class Param():
 
             self.numHoursToSimulate = args[5]
 
-            self.objectiveFunction = args[6]
+            self.startTime = args[6]
+            self.useRealForecast = args[7]
 
-            self.benchmark = args[7]
-            self.sameOutputAsBenchmark = args[8]
+            self.objectiveFunction = args[8]
 
-            self.rateOfChangeConstranints = args[9]
-            self.transitionConstraints = args[10]
-            self.powerSale = args[11]
-            self.powerPurchase = args[12]
-            self.considerPV = args[13]
-            self.considerBattery = args[14]
-            self.peakLoadCapping = args[15]
+            self.benchmark = args[9]
+            self.sameOutputAsBenchmark = args[10]
+
+            self.rateOfChangeConstranints = args[11]
+            self.transitionConstraints = args[12]
+            self.powerSale = args[13]
+            self.powerPurchase = args[14]
+            self.considerPV = args[15]
+            self.considerBattery = args[16]
+            self.peakLoadCapping = args[17]
 
 
-            self.strPathCharMapData = args[16]
-            self.strPathCharMapDataCalc = args[17]
-            self.strPathPVData = args[18]
-            self.strPathPPData = args[19]
-            self.strPathInitialData = args[20]
-            self.strPathAdaptationData = args[21]
+            self.strPathCharMapData = args[18]
+            self.strPathCharMapDataCalc = args[19]
+            self.strPathPVData = args[20]
+            self.strPathPPData = args[21]
+            self.strPathInitialData = args[22]
+            self.strPathAdaptationData = args[23]
         
+    def funcUpdateTime(self, iteration):
+        self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param['controlParameters']['numHoursToSimulate']*iteration)
+        #self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTimeIteration'] + timedelta(hours=self.param['controlParameters']['numHoursToSimulate'])
+
 
     def funcUpdate(self, pv, pp, ci, iteration):
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         self.param['carbonIntensity']['carbonIntensity'] = ci.arrCarbonIntensityHourly
-        
-        """
-        if iteration > 0:
-            self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
-            self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
-            outputData = sio.loadmat(r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM\data_opt_trueCharMap')
+        self.param
+
+        if self.param['controlParameters']['numHoursToSimulate'] >= self.param['controlParameters']['optimizationHorizon']:
+            pass
+        else:
+            if iteration > 0:
+                outputData = sio.loadmat(r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM\data_opt_trueCharMap')
+                for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']+1):
+                    self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + outputData['output']['massFlowMethanolOut'][0][0][0][i]
             
-            for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']+1):
-                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + outputData['output']['massFlowMethanolOut'][0][0][0][i]
+                self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+                self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
+                
+                if self.param['controlParameters']['currStartTimeLastOptHorizon'] >= self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['numTimeStepsToSimulate']:
+                    self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
+                    self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
 
-            if self.param['controlParameters']['currStartTimeLastOptHorizon'] >= self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['numTimeStepsToSimulate']:
-                self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
-                self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
-
-                self.param['battery']['initialCharge'] = outputData['output']['batteryCharge'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                self.param['storageMethanolWater']['InitialFilling'] = outputData['output']['storageMethanolWaterFilling'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                self.param['storageH2']['InitialPressure'] = outputData['output']['storageH2Pressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-                self.param['storageSynthesisgas']['InitialPressure'] = outputData['output']['storageSynthesisgasPressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                self.param['storageSynthesisgas']['InitialFilling'] = self.param['storageSynthesisgas']['InitialPressure']*100000*self.param['storageSynthesisgas']['Volume'] / (self.param['R_Synthesisgas']*(self.param['Tamb'] + self.param['T0']))
-        """
+                    self.param['battery']['initialCharge'] = outputData['output']['batteryCharge'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
+                    self.param['storageMethanolWater']['InitialFilling'] = outputData['output']['storageMethanolWaterFilling'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
+                    self.param['storageH2']['InitialPressure'] = outputData['output']['storageH2Pressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
+                    self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
+                    self.param['storageSynthesisgas']['InitialPressure'] = outputData['output']['storageSynthesisgasPressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
+                    self.param['storageSynthesisgas']['InitialFilling'] = self.param['storageSynthesisgas']['InitialPressure']*100000*self.param['storageSynthesisgas']['Volume'] / (self.param['R_Synthesisgas']*(self.param['Tamb'] + self.param['T0']))
 
 
         
@@ -101,6 +111,9 @@ class Param():
         self.param['controlParameters']['numHoursToSimulate'] = self.numHoursToSimulate
         self.param['controlParameters']['numTimeStepsToSimulate'] = int(self.numHoursToSimulate / self.timeStep)
         self.param['controlParameters']['numTimeStepsToHorizonEnd'] = int(self.numHoursToSimulate / self.timeStep)
+        self.param['controlParameters']['startTime'] = self.startTime
+        self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime']
+        self.param['controlParameters']['useRealForecast'] = self.useRealForecast
         self.param['controlParameters']['objectiveFunction'] = self.objectiveFunction
         self.param['controlParameters']['benchmark'] = self.benchmark
         self.param['controlParameters']['sameOutputAsBenchmark'] = self.sameOutputAsBenchmark

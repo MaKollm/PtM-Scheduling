@@ -13,6 +13,7 @@ from checkSimResults import *
 from carbon_intensity import *
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import matlab.engine
@@ -30,6 +31,8 @@ timeLimit = 1000                           # Time limit for the solver to termin
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
+startTime = pd.Timestamp("2023-01-01 00:00")
+useRealForecast = True
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
@@ -57,7 +60,9 @@ args = [optimizationHorizon,
             timeLimit,
             optimalityGap,
             testFeasibility,
-            numHoursToSimulate,  
+            numHoursToSimulate,
+            startTime,
+            useRealForecast,  
             objectiveFunction,
             benchmark, 
             sameOutputAsBenchmark, 
@@ -113,10 +118,7 @@ def funcInitialize(args, j):
 def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults):
     bUseCalcCharMap = argWorkflow[0]
     bUseDriftCharMap = argWorkflow[1]
-    if len(argWorkflow) == 1:
-        timeIteration = 25
-    else:
-        timeIteration = argWorkflow[2]
+    timeIteration = argWorkflow[2]
 
     ## Create characteristic fields
     cm.funcCreateCharacteristicMaps(strPathCharMapData)
@@ -124,6 +126,7 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
     #cmDrift.funcCreateCharacteristicMaps(strPathCharMapDataDrift)
 
     ## Parameter update
+    param.funcUpdateTime(timeIteration)
     elec.funcUpdate(param)
     pv.funcUpdate(param, timeIteration)
     pp.funcUpdate(param, timeIteration)
@@ -204,7 +207,6 @@ def main(argWorkflow):
         if scheduleMoreTimes == True:
             for i in range(0, numberOfIterations):           
                 dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)        
-            #     dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,j], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
         else:
             dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
             
