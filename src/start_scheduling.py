@@ -25,25 +25,25 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 5*24                 # Considered time period in hours
+optimizationHorizon = 2*24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
 timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
 startTime = pd.Timestamp("2023-01-01 00:00")
-useRealForecast = True
+useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
-benchmark = True                           # If true benchmark scenario is calculated
+benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
 testFeasibility = False                     # If true the optimization model will be tested for feasibility
 rateOfChangeConstranints = False            # If true rate of change constraints will be considered
-transitionConstraints = False                # If true transition constraints will be considered
+transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = False                          # If true pv data will be considered, otherwise it is set to zero
+considerPV = False                           # If true pv data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 

@@ -23,9 +23,15 @@ class PowerPrice():
         self.param = param
         if param.param['controlParameters']['useRealForecast'] == True:
             data = self.funcForecastData(numWeeksToConsider=1)
-            print(data)
+            self.iStart = 0
+            self.iStop  = self.param.param["controlParameters"]["optimizationHorizon"]
+            data["prices"] = data["prices"].astype(float) / 1000
+            self.arrPowerPriceHourly = data["prices"].to_numpy()
+            self.arrPowerPriceHourly = self.arrPowerPriceHourly[self.iStart:self.iStop]
+            print(len(self.arrPowerPriceHourly))
         else:
             self.funcUpdateCSV(param)
+
 
     def funcLoadCSV(self):
         self.DataFrameEnergyCharts = pd.read_csv(self.param.param['controlParameters']['pathPPData'] + r"\\energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2023.csv",dtype = str,skiprows = [1])
@@ -36,10 +42,11 @@ class PowerPrice():
 
         self.arrPowerPriceHourlyAll = self.DataFrameEnergyCharts["Day Ahead Auktion (DE-LU)"].to_numpy()
 
+
     #trims arrPowerPriceHourlyAll to depending on start_time and numHoursToSimulate, saves trimmed array as arrPowerPriceHourly
     def funcUpdateCSV(self, param):
         start = self.param.param["controlParameters"]["startTimeIteration"]
-        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"])
+        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
 
         index = self.DataFrameEnergyCharts.index
         
@@ -47,6 +54,7 @@ class PowerPrice():
         self.iStop  = index.searchsorted(end, side="right")
 
         self.arrPowerPriceHourly = self.arrPowerPriceHourlyAll[self.iStart:self.iStop]
+
 
     #helper method, which gets the full Day-Ahead-auction (DE/LU) prices for a specific year (returns numpy array)
     def funcGetElectricityPrice(self, year):

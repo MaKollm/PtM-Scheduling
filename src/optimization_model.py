@@ -18,7 +18,7 @@ class Optimization_Model():
 
     def funcUpdate(self, param):
         self.param = param
-        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']+1))
+        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
 
 
     def funcCreateOptimizationModel(self, cm, elec, pv, pp, ci):
@@ -48,63 +48,77 @@ class Optimization_Model():
 
     ########## Initial Values ##########
     def funcSetInitialValues(self, cm, elec, pv, pp, ci):
-        if os.path.isfile(self.param.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
-            print("#######")
-            with open(self.param.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
-                initialData = pickle.load(f)
-        
-        if os.path.isfile(self.param.param['controlParameters']['pathInitialData'] + "\param_data.pkl") == True:
-            with open(self.param.param['controlParameters']['pathInitialData'] + "\param_data.pkl", 'rb') as f:
-                paramData = pickle.load(f)
-        
+        if "initialData" in self.param.param:
             # Check if the time horizon of the initial data is the same as the time horizon of the current optimization
-            if 'powerBought' in initialData['input'].keys() and len(initialData['input']['powerBought']) == len(self.arrTime):
+            if self.param.param['initialData']["param"]['controlParameters']['numTimeStepsToSimulate'] == self.param.param['controlParameters']['numTimeStepsToSimulate']:
 
                 for t in self.arrTime:
                     for i in cm.arrOperationPointsCO2CAP:
-                        self.OptVarOperationPointCO2CAP[t,i].Start = initialData['input']['operationPoint_CO2CAP'][t,i]
+                        self.OptVarOperationPointCO2CAP[t,i].Start = self.param.param['initialData']['input']['operationPoint_CO2CAP'][t,i]
+
+                    for i in cm.arrOperationPointsSYN:
+                        self.OptVarOperationPointSYN[t,i].Start = self.param.param['initialData']['input']['operationPoint_SYN'][t,i]
 
                     for i in cm.arrOperationPointsDIS:
-                        self.OptVarOperationPointDIS[t,i].Start = initialData['input']['operationPoint_DIS'][t,i]
+                        self.OptVarOperationPointDIS[t,i].Start = self.param.param['initialData']['input']['operationPoint_DIS'][t,i]
 
-                    for i in range(0,5):
-                        self.OptVarCurrentStateCO2CAP[t,i].Start = initialData['input']['currentStateCO2CAPRaw'][t,i]
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateCO2CAPRaw'])[1]):
+                        self.OptVarCurrentStateCO2CAP[t,i].Start = self.param.param['initialData']['input']['currentStateCO2CAPRaw'][t,i]
 
-                    for i in range(0,5):
-                        self.OptVarCurrentStateDIS[t,i].Start = initialData['input']['currentStateDISRaw'][t,i]
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateSYNRaw'])[1]):
+                        self.OptVarCurrentStateSYN[t,i].Start = self.param.param['initialData']['input']['currentStateSYNRaw'][t,i]
 
-                    for i in range(0,5):
-                        for j in range(0,5):
-                            self.OptVarCurrentStateSwitchCO2CAP[t,i,j].Start = initialData['input']['currentStateSwitchCO2CAPRaw'][t,i,j]
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateDISRaw'])[1]):
+                        self.OptVarCurrentStateDIS[t,i].Start = self.param.param['initialData']['input']['currentStateDISRaw'][t,i]
 
-                    for i in range(0,5):
-                        for j in range(0,5):
-                            self.OptVarCurrentStateSwitchDIS[t,i,j].Start = initialData['input']['currentStateSwitchDISRaw'][t,i,j]
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchCO2CAPRaw'])[1]):
+                        for j in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchCO2CAPRaw'])[2]):
+                            self.OptVarCurrentStateSwitchCO2CAP[t,i,j].Start = self.param.param['initialData']['input']['currentStateSwitchCO2CAPRaw'][t,i,j]
+                    
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchSYNRaw'])[1]):
+                        for j in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchSYNRaw'])[2]):
+                            self.OptVarCurrentStateSwitchSYN[t,i,j].Start = self.param.param['initialData']['input']['currentStateSwitchSYNRaw'][t,i,j]
+
+                    for i in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchDISRaw'])[1]):
+                        for j in range(0,np.shape(self.param.param['initialData']['input']['currentStateSwitchDISRaw'])[2]):
+                            self.OptVarCurrentStateSwitchDIS[t,i,j].Start = self.param.param['initialData']['input']['currentStateSwitchDISRaw'][t,i,j]
 
                     for i in elec.arrEnapterModules:
-                        self.OptVarPowerElectrolyser[t,i].Start = initialData['input']['powerElectrolyserRaw'][t,i]
+                        self.OptVarPowerElectrolyser[t,i].Start = self.param.param['initialData']['input']['powerElectrolyserRaw'][t,i]
 
                     for i in elec.arrEnapterModules:
-                        for j in range(0,4):
-                            self.OptVarModeElectrolyser[t,i,j].Start = initialData['input']['modeElectrolyserRaw'][t,i,j]
+                        for j in elec.arrModes:
+                            self.OptVarModeElectrolyser[t,i,j].Start = self.param.param['initialData']['input']['modeElectrolyserRaw'][t,i,j]
 
-                    self.OptVarUsageOfPV[t].Start = initialData['input']['usageOfPV'][t]       
-                    self.OptVarPowerInBatteryPV[t].Start = initialData['input']['powerInBatteryPV'][t]
+                    self.OptVarUsageOfPV[t].Start = self.param.param['initialData']['input']['usageOfPV'][t]       
+                    self.OptVarPowerInBatteryPV[t].Start = self.param.param['initialData']['input']['powerInBatteryPV'][t]
 
-                    self.OptVarPowerInBatteryBought[t].Start = initialData['input']['powerInBatteryBought'][t]
-                    self.OptVarPowerOutBattery[t].Start = initialData['input']['powerOutBattery'][t]
-                    self.OptVarPowerOutBatterySold[t].Start = initialData['input']['powerOutBatterySold'][t]
-                    self.OptVarPowerBought[t].Start = initialData['input']['powerBought'][t]
+                    self.OptVarPowerInBatteryBought[t].Start = self.param.param['initialData']['input']['powerInBatteryBought'][t]
+                    self.OptVarPowerOutBattery[t].Start = self.param.param['initialData']['input']['powerOutBattery'][t]
+                    self.OptVarPowerOutBatterySold[t].Start = self.param.param['initialData']['input']['powerOutBatterySold'][t]
+                    self.OptVarPowerBought[t].Start = self.param.param['initialData']['input']['powerBought'][t]
         
-                    self.OptVarActualPowerInBatteryPV[t].Start = initialData['input']['actualPowerInBatteryPV'][t]
-                    self.OptVarActualPowerInBatteryBought[t].Start = initialData['input']['actualPowerInBatteryBought'][t]
-                    self.OptVarActualPowerOutBattery[t].Start = initialData['input']['actualPowerOutBattery'][t]
-                    self.OptVarActualPowerOutBatterySold[t].Start = initialData['input']['actualPowerOutBatterySold'][t]
+                    self.OptVarActualPowerInBatteryPV[t].Start = self.param.param['initialData']['input']['actualPowerInBatteryPV'][t]
+                    self.OptVarActualPowerInBatteryBought[t].Start = self.param.param['initialData']['input']['actualPowerInBatteryBought'][t]
+                    self.OptVarActualPowerOutBattery[t].Start = self.param.param['initialData']['input']['actualPowerOutBattery'][t]
+                    self.OptVarActualPowerOutBatterySold[t].Start = self.param.param['initialData']['input']['actualPowerOutBatterySold'][t]
 
-                    self.OptVarIndicatorBatteryCharging1[t].Start = initialData['input']['indicatorBatteryCharging1'][t]
-                    self.OptVarIndicatorBatteryDischarging1[t].Start = initialData['input']['indicatorBatteryDischarging1'][t]
-                    self.OptVarIndicatorBatteryCharging2[t].Start = initialData['input']['indicatorBatteryCharging2'][t]
-                    self.OptVarIndicatorBatteryDischarging2[t].Start = initialData['input']['indicatorBatteryDischarging2'][t]
+                    self.OptVarIndicatorBatteryCharging1[t].Start = self.param.param['initialData']['input']['indicatorBatteryCharging1'][t]
+                    self.OptVarIndicatorBatteryDischarging1[t].Start = self.param.param['initialData']['input']['indicatorBatteryDischarging1'][t]
+                    self.OptVarIndicatorBatteryCharging2[t].Start = self.param.param['initialData']['input']['indicatorBatteryCharging2'][t]
+                    self.OptVarIndicatorBatteryDischarging2[t].Start = self.param.param['initialData']['input']['indicatorBatteryDischarging2'][t]
+                
+                for locali, i in enumerate(cm.arrOperationPointsCO2CAP[4:]):
+                    self.OptVarUsedOperationPointCO2CAP[i].Start = self.param.param['initialData']['input']['usedOperationPointCO2CAPRaw'][locali]
+
+                for locali, i in enumerate(cm.arrOperationPointsSYN[4:]):
+                    self.OptVarUsedOperationPointSYN[i].Start = self.param.param['initialData']['input']['usedOperationPointSYNRaw'][locali]
+
+                for locali, i in enumerate(cm.arrOperationPointsDIS[4:]):
+                    self.OptVarUsedOperationPointDIS[i].Start = self.param.param['initialData']['input']['usedOperationPointDISRaw'][locali]
+
+                for i in elec.arrEnapterModules:
+                     self.OptVarUsedOperationPointElectrolyser[i].Start = self.param.param['initialData']['input']['UsedOperationPointElec'][i]
 
             else:
                 print("########## Warning ##########")
@@ -147,10 +161,14 @@ class Optimization_Model():
         self.OptVarIndicatorBatteryCharging2 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
         self.OptVarIndicatorBatteryDischarging2 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
 
-
-
         self.OptVarPowerBought = self.m.addVars(self.arrTime,lb=0.0,ub=100,vtype=GRB.CONTINUOUS)
 
+        # Variable for benchmark
+        self.OptVarUsedOperationPointCO2CAP = self.m.addVars(cm.arrOperationPointsCO2CAP[4:], vtype=GRB.BINARY)
+        self.OptVarUsedOperationPointSYN = self.m.addVars(cm.arrOperationPointsSYN[4:], vtype=GRB.BINARY)
+        self.OptVarUsedOperationPointDIS = self.m.addVars(cm.arrOperationPointsDIS[4:], vtype=GRB.BINARY)
+        self.OptVarUsedOperationPointElectrolyser = self.m.addVars(self.param.param['electrolyser']['numberOfEnapterModules'],lb=self.param.param['electrolyser']['powerLowerBound'], ub=self.param.param['electrolyser']['powerUpperBound'],vtype=GRB.CONTINUOUS)
+        
 
     ########## Cost function ##########
     def funcCreateCostFunction(self, cm, elec, pv, pp, ci):
@@ -192,7 +210,38 @@ class Optimization_Model():
             # Minimum amount of methanol which has to be produced
             self.m.addConstr(
                 (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
+            
 
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarUsedOperationPointCO2CAP[j] for j in cm.arrOperationPointsCO2CAP[4:]) == 1), "Benchmark operation point CO2-Capture 3_1")
+            self.m.addConstrs(
+                (self.OptVarOperationPointCO2CAP[(t,j)] == self.OptVarCurrentStateCO2CAP[(t,3)] * self.OptVarUsedOperationPointCO2CAP[j] for t in self.arrTime for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3_2")
+
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarUsedOperationPointSYN[j] for j in cm.arrOperationPointsSYN[4:]) == 1), "Benchmark operation point Synthesis 3_1")
+            self.m.addConstrs(
+                (self.OptVarOperationPointSYN[(t,j)] == self.OptVarCurrentStateSYN[(t,3)] * self.OptVarUsedOperationPointSYN[j] for t in self.arrTime for j in cm.arrOperationPointsSYN[4:]), "Benchmark operation point Synthesis 3_2")
+            
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarUsedOperationPointDIS[j] for j in cm.arrOperationPointsDIS[4:]) == 1), "Benchmark operation point Distillation 3_1")
+            self.m.addConstrs(
+                (self.OptVarOperationPointDIS[(t,j)] == self.OptVarCurrentStateDIS[(t,3)] * self.OptVarUsedOperationPointDIS[j] for t in self.arrTime for j in cm.arrOperationPointsDIS[4:]), "Benchmark operation point Distillation 3_2")
+            
+            self.m.addConstrs(
+                (self.OptVarPowerElectrolyser[(t,n)] >= self.param.param['electrolyser']['benchmarkPower'] * self.OptVarModeElectrolyser[(t,n,3)] for t in self.arrTime for n in elec.arrEnapterModules), "Benchmark power electrolyser")
+            self.m.addConstrs(
+                (self.OptVarModeElectrolyser[(t,n-1,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime for n in elec.arrEnapterModules[1:] for m in elec.arrModes), "fdsa")
+            
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateSwitchCO2CAP[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateSwitchSYN[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateSwitchDIS[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+            self.m.addConstrs(
+                (gp.quicksum(self.OptVarModeElectrolyser[(t,n,0)] for t in self.arrTime) <= 1 for n in elec.arrEnapterModules), "fdsa")
+
+            """
             if self.param.param['controlParameters']['transitionConstraints'] == True:
                 self.m.addConstrs(
                     (self.OptVarCurrentStateCO2CAP[(t,1)] == 1 for t in self.arrTime[1:self.param.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Startup'][0]+1]), "Benchmark operation point CO2-Capture 1")
@@ -221,7 +270,7 @@ class Optimization_Model():
                 self.m.addConstrs(
                     (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
             else:
-                self.m.addConstr(gp.quicksum(gp.quicksum(self.OptVarOperationPointCO2CAP[(t,j)] for t in self.arrTime) >= 1 for j in cm.arrOperationPointsCO2CAP[4:]) == 1)
+                
                 # The same operation point for absorption and desorption for every time step
                 self.m.addConstrs(
                         (self.OptVarOperationPointCO2CAP[(t-1,j)] == self.OptVarOperationPointCO2CAP[(t,j)] for t in self.arrTime[2:] for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3")
@@ -236,7 +285,7 @@ class Optimization_Model():
                     (self.OptVarPowerElectrolyser[(t-1,n)] == self.OptVarPowerElectrolyser[(t,n)] for t in self.arrTime[2:] for n in elec.arrEnapterModules), "Benchmark power electrolyser")
                 self.m.addConstrs(
                     (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
-
+                """
 
  
         if self.param.param['controlParameters']['benchmark'] == False:
@@ -258,6 +307,11 @@ class Optimization_Model():
 
 
 
+        if self.param.param['controlParameters']['numTimeStepsToSimulate'] < self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['controlParameters']['iteration'] > 0:
+            for t in range(0,min):
+                self.m.addConstr(self.OptVarCurrentStateCO2CAP[(t,self.param.param['startValues']['stateCO2CAP'])] == 1)
+        
+            self.m.addConstr(self.OptVarCurrentStateCO2CAP[(max,self.param.param['startValues']['stateCO2CAP'])] == 0)
 
 
 
@@ -608,25 +662,25 @@ class Optimization_Model():
         ## Initial time step constraints
         # No operation point for Synthesis in initial time step
         self.m.addConstr(
-            (self.OptVarOperationPointCO2CAP[(0,0)] == 1), "No operation point for CO2-Capture in initial time step")
+            (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
         # No operation point for CO2-Capture in initial time step
         self.m.addConstr(
-            (self.OptVarOperationPointSYN[(0,0)] == 1), "No operation point for Synthesis in initial time step")
+            (self.OptVarOperationPointSYN[(0,self.param.param['startValues']['operatingPointSYN'])] == 1), "No operation point for Synthesis in initial time step")
         # No operation point for distillation in initial time step
         self.m.addConstr(
-            (self.OptVarOperationPointDIS[(0,0)] == 1), "No operation point for distillation in initial time step")
+            (self.OptVarOperationPointDIS[(0,self.param.param['startValues']['operatingPointDIS'])] == 1), "No operation point for distillation in initial time step")
         # CO2-Capture is off in initial time step
         self.m.addConstr(
-            (self.OptVarCurrentStateCO2CAP[(0,0)] == 1), "State is off for CO2-Capture in initial time step")
+            (self.OptVarCurrentStateCO2CAP[(0,self.param.param['startValues']['stateCO2CAP'])] == 1), "State is off for CO2-Capture in initial time step")
         # Synthesis is off in initial time step
         self.m.addConstr(
-            (self.OptVarCurrentStateSYN[(0,0)] == 1), "State is off for COSynthesis in initial time step")
+            (self.OptVarCurrentStateSYN[(0,self.param.param['startValues']['stateSYN'])] == 1), "State is off for COSynthesis in initial time step")
         # Distillation is off in initial time step
         self.m.addConstr(
-            (self.OptVarCurrentStateDIS[(0,0)] == 1), "State is off for distillation in initial time step")     
+            (self.OptVarCurrentStateDIS[(0,self.param.param['startValues']['stateDIS'])] == 1), "State is off for distillation in initial time step")     
         # No power in electrolyser in initial time step
         self.m.addConstrs(
-            (self.OptVarModeElectrolyser[(0,n,2)] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
+            (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
         # No input or output for battery in first time step
         self.m.addConstr(
             (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
@@ -688,9 +742,9 @@ class Optimization_Model():
             #    (self.param.param['storageH2']['InitialFilling'] + electrolyser_sum - hydrogen_in_sum) * R_H2_Tamb_T0 * storage_volume_factor >= self.param.param['storageH2']['LowerBound'], f"Storage H2 lower bound at time {t}")
         
         self.m.addConstr(
-            (self.param.param['constraints']['hydrogenStorageEqualValue'] - pressure_level_storage_H2[-1] <= self.param.param['constraints']['hydrogenStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
+            (self.param.param['constraints']['hydrogenStorageEqualValue'] - pressure_level_storage_H2[self.param.param['constraints']['hydrogenStorageEqualTime']] <= self.param.param['constraints']['hydrogenStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
         self.m.addConstr(
-            (self.param.param['constraints']['hydrogenStorageEqualValue'] - pressure_level_storage_H2[-1] >= self.param.param['constraints']['hydrogenStorageFillEqual']['UpperBound']), "Storage H2 equal filling lower bound")
+            (self.param.param['constraints']['hydrogenStorageEqualValue'] - pressure_level_storage_H2[self.param.param['constraints']['hydrogenStorageEqualTime']] >= self.param.param['constraints']['hydrogenStorageFillEqual']['UpperBound']), "Storage H2 equal filling lower bound")
         
 
 

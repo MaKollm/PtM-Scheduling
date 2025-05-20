@@ -19,32 +19,46 @@ def visu(result):
 
         plt.figure(1)
         # State of CO2-Capture
-        plt.subplot(2,2,1)
+        plt.subplot(2,3,1)
         plt.plot(result['input']['currentStateCO2CAP'])
         plt.title('State of the CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('state')
 
+        # State of Synthesis
+        plt.subplot(2,3,2)
+        plt.plot(result['input']['currentStateSYN'])
+        plt.title('State of the Synthesis')
+        plt.xlabel('time in h')
+        plt.ylabel('state')
+
         # State of Distillation
-        plt.subplot(2,2,2)
+        plt.subplot(2,3,3)
         plt.plot(result['input']['currentStateDIS'])
         plt.title('State of the Distillation')
         plt.xlabel('time in h')
         plt.ylabel('state')
 
-        # Operation point of CO2-Capture
-        plt.subplot(2,2,3)
+        # Operating point of CO2-Capture
+        plt.subplot(2,3,4)
         plt.plot(result['input']['massFlowBiogasIn'])
-        plt.title('Operation point of the CO2-Capture')
+        plt.title('Operating point of the CO2-Capture')
         plt.xlabel('time in h')
-        plt.ylabel('operation point')
+        plt.ylabel('operating point')
 
-        # Operation point of Distillation
-        plt.subplot(2,2,4)
-        plt.plot(result['input']['massFlowMethanolWaterStorage'])
-        plt.title('Operation point of the Distillation')
+        # Operating point of Synthesis
+        plt.subplot(2,3,5)
+        plt.plot(result['input']['massFlowSynthesisgasIn'])
+        plt.title('Operating point of the Synthesis')
         plt.xlabel('time in h')
-        plt.ylabel('operation point')
+        plt.ylabel('operating point')
+
+        # Operating point of Distillation
+        plt.subplot(2,3,6)
+        plt.plot(result['input']['massFlowMethanolWaterStorage'])
+        plt.title('Operating point of the Distillation')
+        plt.xlabel('time in h')
+        plt.ylabel('operating point')
 
 
 
@@ -96,21 +110,28 @@ def visu(result):
 
         plt.figure(3)
         # Power of electrolyser
-        plt.subplot(3,1,1)
+        plt.subplot(4,1,1)
         plt.plot(result['input']['powerElectrolyser'])
         plt.title('Power electrolyser')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
 
-        # Power of CO2-Capture and Synthesis
-        plt.subplot(3,1,2)
+        # Power of CO2-Capture
+        plt.subplot(4,1,2)
         plt.plot(result['output']['powerPlantCO2CAP'])
-        plt.title('Power CO2-Capture and Synthesis')
+        plt.title('Power CO2-Capture')
+        plt.xlabel('time in h')
+        plt.ylabel('power in kW')
+
+        # Power of Synthesis
+        plt.subplot(4,1,3)
+        plt.plot(result['output']['powerPlantSYN'])
+        plt.title('Power Synthesis')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
 
         # Power of CO2-Capture and Synthesis
-        plt.subplot(3,1,3)
+        plt.subplot(4,1,4)
         plt.plot(result['output']['powerPlantDIS'])
         plt.title('Power Distillation')
         plt.xlabel('time in h')

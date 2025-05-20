@@ -2,6 +2,7 @@
 
 import scipy.io as sio
 import pandas as pd
+import numpy as np
 import os
 import pickle
 from gurobipy import GRB
@@ -45,7 +46,8 @@ class Param():
             self.strPathAdaptationData = args[23]
         
     def funcUpdateTime(self, iteration):
-        self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param['controlParameters']['numHoursToSimulate']*iteration)
+        self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param['controlParameters']['numTimeStepsToSimulate']*iteration)
+        self.param['controlParameters']['iteration'] = iteration
         #self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTimeIteration'] + timedelta(hours=self.param['controlParameters']['numHoursToSimulate'])
 
 
@@ -53,30 +55,77 @@ class Param():
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         self.param['carbonIntensity']['carbonIntensity'] = ci.arrCarbonIntensityHourly
-        self.param
 
-        if self.param['controlParameters']['numHoursToSimulate'] >= self.param['controlParameters']['optimizationHorizon']:
+        if self.param['controlParameters']['numTimeStepsToSimulate'] >= self.param['controlParameters']['numberOfTimeSteps']:
             pass
         else:
-            if iteration > 0:
-                outputData = sio.loadmat(r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM\data_opt_trueCharMap')
-                for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']+1):
-                    self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + outputData['output']['massFlowMethanolOut'][0][0][0][i]
-            
-                self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
-                self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
-                
-                if self.param['controlParameters']['currStartTimeLastOptHorizon'] >= self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['numTimeStepsToSimulate']:
-                    self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
-                    self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
+            if os.path.isfile(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
+                with open(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
+                    self.param['initialData'] = pickle.load(f)
 
-                    self.param['battery']['initialCharge'] = outputData['output']['batteryCharge'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                    self.param['storageMethanolWater']['InitialFilling'] = outputData['output']['storageMethanolWaterFilling'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                    self.param['storageH2']['InitialPressure'] = outputData['output']['storageH2Pressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
+                if len(self.param['initialData']['input']) > 0 and iteration > 0:
+                    # Operating states
+                    for i in range(self.param['controlParameters']['numTimeStepsToSimulate']-1, 0, -1):
+                        for j in range(np.shape(self.param['initialData']['input']['currentStateSwitchCO2CAPRaw'])[1]):
+                            for k in range(np.shape(self.param['initialData']['input']['currentStateSwitchCO2CAPRaw'])[2]):
+                                if int(self.param['initialData']['input']['currentStateSwitchCO2CAPRaw'][i,j,k]) == 1 and j != k:
+                                    self.param['startValues']['stateCO2CAP'] = k
+                                    if k == 0:
+                                        min = max(0,self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Off'][j] - (self.param['controlParameters']['numTimeStepsToSimulate'] - i))
+                                        max = self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Off'][j] - (self.param['controlParameters']['numTimeStepsToSimulate'] - i)
+                                    break
+
+                    for i in range(self.param['controlParameters']['numTimeStepsToSimulate']-1, 0, -1):
+                        for j in range(np.shape(self.param['initialData']['input']['currentStateSwitchSYNRaw'])[1]):
+                            for k in range(np.shape(self.param['initialData']['input']['currentStateSwitchSYNRaw'])[2]):
+                                if int(self.param['initialData']['input']['currentStateSwitchSYNRaw'][i,j,k]) == 1 and j != k:
+                                    self.param['startValues']['stateSYN'] = k
+                                    break
+
+                    for i in range(self.param['controlParameters']['numTimeStepsToSimulate']-1, 0, -1):
+                        for j in range(np.shape(self.param['initialData']['input']['currentStateSwitchDISRaw'])[1]):
+                            for k in range(np.shape(self.param['initialData']['input']['currentStateSwitchDISRaw'])[2]):
+                                if int(self.param['initialData']['input']['currentStateSwitchDISRaw'][i,j,k]) == 1 and j != k:
+                                    self.param['startValues']['stateDIS'] = k
+                                    break
+                    
+                    for j in range(np.shape(self.param['initialData']['input']['modeElectrolyserRaw'])[1]):
+                        for k in range(np.shape(self.param['initialData']['input']['modeElectrolyserRaw'])[2]):
+                            if int(self.param['initialData']['input']['modeElectrolyserRaw'][self.param['controlParameters']['numTimeStepsToSimulate']-1,j,k]) == 1:
+                                self.param['startValues']['modeElectrolyser'][j] = k 
+
+                    # Operating points
+                    for j in range(np.shape(self.param['initialData']['input']['operationPoint_CO2CAP'])[1]):
+                            if int(self.param['initialData']['input']['operationPoint_CO2CAP'][i,j]) == 1:
+                                self.param['startValues']['operatingPointCO2CAP'] = j
+                    
+                    for j in range(np.shape(self.param['initialData']['input']['operationPoint_SYN'])[1]):
+                        if int(self.param['initialData']['input']['operationPoint_SYN'][i,j]) == 1:
+                            self.param['startValues']['operatingPointSYN'] = j  
+
+                    for j in range(np.shape(self.param['initialData']['input']['operationPoint_DIS'])[1]):
+                        if int(self.param['initialData']['input']['operationPoint_DIS'][i,j]) == 1:
+                            self.param['startValues']['operatingPointDIS'] = 0
+
+                    # Storages
+                    self.param['storageH2']['InitialPressure'] = self.param['initialData']["output"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']]
                     self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-                    self.param['storageSynthesisgas']['InitialPressure'] = outputData['output']['storageSynthesisgasPressure'][0][0][0][self.param['controlParameters']['numTimeStepsToSimulate']+1]
-                    self.param['storageSynthesisgas']['InitialFilling'] = self.param['storageSynthesisgas']['InitialPressure']*100000*self.param['storageSynthesisgas']['Volume'] / (self.param['R_Synthesisgas']*(self.param['Tamb'] + self.param['T0']))
+                    self.param['storageMethanolWater']['InitialFilling'] = self.param['initialData']["output"]['storageMethanolWaterFilling'][self.param['controlParameters']['numTimeStepsToSimulate']]
+                    self.param['battery']['initialCharge'] = self.param['initialData']["output"]['batteryCharge'][self.param['controlParameters']['numTimeStepsToSimulate']]
 
+                    # Methanol produced 
+                    for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
+                        self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + self.param['initialData']['output']['massFlowMethanolOut'][i]
+                
+                    self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+                    self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
+                    
+                    # Storage filling level change
+                    self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numTimeStepsToHorizonEnd']
+
+                    if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
+                        self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
+                        self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps']
 
         
     def funcGet(self, j):
@@ -87,7 +136,7 @@ class Param():
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 10
-        self.param['production']['minMethanolOpt'] = 100 #113.75 #108.065
+        self.param['production']['minMethanolOpt'] = 10 #113.75 #108.065
         self.param['production']['methanol'] = 0      
         
         
@@ -134,6 +183,7 @@ class Param():
         self.param['controlParameters']['currStartTimeLastOptHorizon'] = 0
         self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
 
+        self.param['controlParameters']['iteration'] = 0
 
 
         ## Characteristic field indices
@@ -249,9 +299,11 @@ class Param():
         self.param['pv']['numberOfUncertaintySamples'] = 100
         self.param['pv']['alpha'] = 0.9
         self.param['pv']['covariance'] = 8
+        self.param["pv"]["strPvLat"] = "49.09"
+        self.param["pv"]["strPvLon"] = "8.44"
 
-        
-        
+
+
         ## Battery
         self.param['battery'] = {}                                                   # https://www.bsl-battery.com/100kwh-commercial-solar-battery-storage.html
         self.param['battery']['power'] = 6384#50             # kWh
@@ -264,6 +316,24 @@ class Param():
         self.param['battery']['maxDischargeRate'] = self.param['battery']['power'] * 0.5#10        # kW
         self.param['battery']['minDischargeRate'] = 2#self.param['battery']['power'] * 0.01#1       # kW                # Annahme (aktuell nicht genutzt)
         self.param['battery']['initialCharge'] = 0.5*self.param['battery']['capacity'] * self.param['battery']['voltage'] / 1000
+
+
+
+        ## Electrolyser
+        self.param['electrolyser'] = {}
+        self.param['electrolyser']['constant'] = 0.0187239583
+        self.param['electrolyser']['numberOfEnapterModules'] = 8
+        self.param['electrolyser']['powerLowerBound'] = 1.44
+        self.param['electrolyser']['powerUpperBound'] = 2.4
+        self.param['electrolyser']['standbyPower'] = 0.1
+        self.param['electrolyser']['benchmarkPower'] = self.param['electrolyser']['powerUpperBound']
+
+        self.param['electrolyser']['numberOperationPoints'] = 41
+        self.param['electrolyser']['conversionValues'] = []
+
+        for i in range(0, self.param['electrolyser']['numberOperationPoints']):
+            self.param['electrolyser']['conversionValues'].append(self.param['electrolyser']['powerLowerBound'] + (self.param['electrolyser']['powerUpperBound'] - self.param['electrolyser']['powerLowerBound']) * i / (self.param['electrolyser']['numberOperationPoints'] - 1))
+
 
 
         ## Storages
@@ -296,19 +366,15 @@ class Param():
 
 
 
-        ## Electrolyser
-        self.param['electrolyser'] = {}
-        self.param['electrolyser']['constant'] = 0.0187239583
-        self.param['electrolyser']['numberOfEnapterModules'] = 8
-        self.param['electrolyser']['powerLowerBound'] = 1.44
-        self.param['electrolyser']['powerUpperBound'] = 2.4
-        self.param['electrolyser']['standbyPower'] = 0.1
-
-        self.param['electrolyser']['numberOperationPoints'] = 41
-        self.param['electrolyser']['conversionValues'] = []
-
-        for i in range(0, self.param['electrolyser']['numberOperationPoints']):
-            self.param['electrolyser']['conversionValues'].append(self.param['electrolyser']['powerLowerBound'] + (self.param['electrolyser']['powerUpperBound'] - self.param['electrolyser']['powerLowerBound']) * i / (self.param['electrolyser']['numberOperationPoints'] - 1))
+        ## Start values
+        self.param['startValues'] = {}
+        self.param['startValues']['stateCO2CAP'] = 0            # off
+        self.param['startValues']['stateSYN'] = 0               # off
+        self.param['startValues']['stateDIS'] = 0               # off
+        self.param['startValues']['modeElectrolyser'] = np.ones(self.param['electrolyser']['numberOfEnapterModules']) * 2       # off
+        self.param['startValues']['operatingPointCO2CAP'] = 0   # off
+        self.param['startValues']['operatingPointSYN'] = 0      # off
+        self.param['startValues']['operatingPointDIS'] = 0      # off
 
 
 
@@ -318,30 +384,29 @@ class Param():
         self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
 
         if self.param['controlParameters']['benchmark'] == True:
-            self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
-            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.1
+            self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
+            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
         else:
             self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
             self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
 
         self.param['constraints']['methanolWaterStorageFillEqual'] = {}
         self.param['constraints']['methanolWaterStorageEqualValue'] =  self.param['storageMethanolWater']['InitialFilling']
-        self.param['constraints']['methanolWaterStorageEqualTime'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
+        self.param['constraints']['methanolWaterStorageEqualTime'] =  self.param['controlParameters']['numberOfTimeSteps'] - 1
         self.param['constraints']['methanolWaterStorageFillEqual']['LowerBound'] = self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['methanolWaterStorageFillEqual']['UpperBound'] = -self.param['storageMethanolWater']['InitialFilling']*self.param['constraints']['storagesFactorFillEqualUpper']
 
         self.param['constraints']['hydrogenStorageFillEqual'] = {}
         self.param['constraints']['hydrogenStorageEqualValue'] =  self.param['storageH2']['InitialPressure']
-        self.param['constraints']['hydrogenStorageEqualTime'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
+        self.param['constraints']['hydrogenStorageEqualTime'] =  self.param['controlParameters']['numberOfTimeSteps'] - 1
         self.param['constraints']['hydrogenStorageFillEqual']['LowerBound'] = self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['hydrogenStorageFillEqual']['UpperBound'] = -self.param['storageH2']['InitialPressure']*self.param['constraints']['storagesFactorFillEqualUpper']
 
         self.param['constraints']['batteryChargeEqual'] = {}
         self.param['constraints']['batteryChargeEqualValue'] =  self.param['battery']['initialCharge']
-        self.param['constraints']['batteryChargeEqualValue'] =  self.param['controlParameters']['optimizationHorizon'] = self.optimizationHorizon
+        self.param['constraints']['batteryChargeEqualTime'] =  self.param['controlParameters']['numberOfTimeSteps'] - 1
         self.param['constraints']['batteryChargeEqual']['LowerBound'] = self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualLower']
         self.param['constraints']['batteryChargeEqual']['UpperBound'] = -self.param['battery']['initialCharge']*self.param['constraints']['storagesFactorFillEqualUpper']
-
 
 
 

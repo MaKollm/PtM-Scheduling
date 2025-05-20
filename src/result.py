@@ -23,7 +23,7 @@ class Result():
 
     def funcUpdate(self, param):
         self.param = param
-        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']+1))
+        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
         self.dictResult = {'input': {}, 'output': {}, 'costs': {}, 'param': {}}
         self.dictResult['param'] = self.param
 
@@ -54,17 +54,6 @@ class Result():
                     if solution[i,j] == 1:
                         self.dictResult['input']['massFlowHydrogenIn'].append(cm.arrHydrogenInValuesConversion[j])
 
-
-            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointDIS)
-            self.dictResult['input']['operationPoint_DIS'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsDIS)))
-            self.dictResult['input']['massFlowMethanolWaterStorage'] = []
-            for i in self.arrTime:
-                for j in cm.arrOperationPointsDIS:
-                    self.dictResult['input']['operationPoint_DIS'][i,j] = solution[i,j]
-                    if int(solution[i,j]) == 1:
-                        self.dictResult['input']['massFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
-
-
             solution = optModel.m.getAttr('X', optModel.OptVarOperationPointSYN)
             self.dictResult['input']['operationPoint_SYN'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsSYN)))
             self.dictResult['input']['massFlowSynthesisgasIn'] = []
@@ -73,6 +62,15 @@ class Result():
                     self.dictResult['input']['operationPoint_SYN'][i,j] = solution[i,j]
                     if int(solution[i,j]) == 1:
                         self.dictResult['input']['massFlowSynthesisgasIn'].append(cm.arrSynthesisgasInValuesConversion[j])
+                    
+            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointDIS)
+            self.dictResult['input']['operationPoint_DIS'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsDIS)))
+            self.dictResult['input']['massFlowMethanolWaterStorage'] = []
+            for i in self.arrTime:
+                for j in cm.arrOperationPointsDIS:
+                    self.dictResult['input']['operationPoint_DIS'][i,j] = solution[i,j]
+                    if int(solution[i,j]) == 1:
+                        self.dictResult['input']['massFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
 
 
             solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateCO2CAP)
@@ -152,70 +150,33 @@ class Result():
             for i in range(0, self.param.param['electrolyser']['numberOfEnapterModules']):
                 self.dictResult['input']['electrolyserMode'][(i)] = []
 
+            self.dictResult['input']['powerElectrolyser'] = []
+            powerElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarPowerElectrolyser)
+            self.dictResult['input']['powerElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),self.param.param['electrolyser']['numberOfEnapterModules']))
+            modeElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarModeElectrolyser)
+            self.dictResult['input']['modeElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),self.param.param['electrolyser']['numberOfEnapterModules'],4))
 
+            for i in self.arrTime:
+                temp = 0
+                for n in elec.arrEnapterModules:
+                    if modeElectrolyserRaw[i,n,0] == 1:
+                        temp = temp + self.param.param['electrolyser']['powerLowerBound'] + (self.param.param['electrolyser']['powerUpperBound'] - self.param.param['electrolyser']['powerLowerBound']) / 2
+                        self.dictResult['input']['electrolyserMode'][(n)].append("ramp-up")
+                    elif modeElectrolyserRaw[i,n,1] == 1:
+                        temp = temp + 0.3
+                        self.dictResult['input']['electrolyserMode'][(n)].append("standby")
+                    elif modeElectrolyserRaw[i,n,2] == 1:
+                        temp = temp + 0
+                        self.dictResult['input']['electrolyserMode'][(n)].append("off")
+                    elif modeElectrolyserRaw[i,n,3] == 1:
+                        temp = temp + powerElectrolyserRaw[i,n]
+                        self.dictResult['input']['electrolyserMode'][(n)].append("on")
 
-            if self.param.param['controlParameters']['objectiveFunction'] == 7 or self.param.param['controlParameters']['objectiveFunction'] == 8:
-
-                self.dictResult['input']['powerElectrolyser'] = []
-                powerElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarPowerElectrolyser)
-                self.dictResult['input']['powerElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsELEC),self.param.param['electrolyser']['numberOfEnapterModules']))
-                modeElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarModeElectrolyser)
-                self.dictResult['input']['modeElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),self.param.param['electrolyser']['numberOfEnapterModules'],4))
-
-                for i in self.arrTime:
-                    temp = 0
-                    for n in elec.arrEnapterModules:
-                        if modeElectrolyserRaw[i,n,0] == 1:
-                            temp = temp + self.param.param['electrolyser']['powerLowerBound'] + (self.param.param['electrolyser']['powerUpperBound'] - self.param.param['electrolyser']['powerLowerBound']) / 2
-                            self.dictResult['input']['electrolyserMode'][(n)].append("ramp-up")
-                        elif modeElectrolyserRaw[i,n,1] == 1:
-                            temp = temp + 0.3
-                            self.dictResult['input']['electrolyserMode'][(n)].append("standby")
-                        elif modeElectrolyserRaw[i,n,2] == 1:
-                            temp = temp + 0
-                            self.dictResult['input']['electrolyserMode'][(n)].append("off")
-                        elif modeElectrolyserRaw[i,n,3] == 1:
-                            for j in cm.arrOperationPointsELEC:
-                                if powerElectrolyserRaw[i,j,n] == 1:
-                                    temp = temp + cm.powerElectrolyser[j]
-                                    self.dictResult['input']['electrolyserMode'][(n)].append("on")
-
-
-                        self.dictResult['input']['powerElectrolyserRaw'][i,j,n] = powerElectrolyserRaw[i,j,n]
-                        for k in range(0,4):
-                            self.dictResult['input']['modeElectrolyserRaw'][i,n,k] = modeElectrolyserRaw[i,n,k]
-                            
-                    self.dictResult['input']['powerElectrolyser'].append(temp)
-
-
-            else:
-                self.dictResult['input']['powerElectrolyser'] = []
-                powerElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarPowerElectrolyser)
-                self.dictResult['input']['powerElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),self.param.param['electrolyser']['numberOfEnapterModules']))
-                modeElectrolyserRaw = optModel.m.getAttr('X', optModel.OptVarModeElectrolyser)
-                self.dictResult['input']['modeElectrolyserRaw'] = np.empty(shape=(len(self.arrTime),self.param.param['electrolyser']['numberOfEnapterModules'],4))
-
-                for i in self.arrTime:
-                    temp = 0
-                    for n in elec.arrEnapterModules:
-                        if modeElectrolyserRaw[i,n,0] == 1:
-                            temp = temp + self.param.param['electrolyser']['powerLowerBound'] + (self.param.param['electrolyser']['powerUpperBound'] - self.param.param['electrolyser']['powerLowerBound']) / 2
-                            self.dictResult['input']['electrolyserMode'][(n)].append("ramp-up")
-                        elif modeElectrolyserRaw[i,n,1] == 1:
-                            temp = temp + 0.3
-                            self.dictResult['input']['electrolyserMode'][(n)].append("standby")
-                        elif modeElectrolyserRaw[i,n,2] == 1:
-                            temp = temp + 0
-                            self.dictResult['input']['electrolyserMode'][(n)].append("off")
-                        elif modeElectrolyserRaw[i,n,3] == 1:
-                            temp = temp + powerElectrolyserRaw[i,n]
-                            self.dictResult['input']['electrolyserMode'][(n)].append("on")
-
-                        self.dictResult['input']['powerElectrolyserRaw'][i,n] = powerElectrolyserRaw[i,n]
-                        for k in range(0,4):
-                            self.dictResult['input']['modeElectrolyserRaw'][i,n,k] = modeElectrolyserRaw[i,n,k]
-                            
-                    self.dictResult['input']['powerElectrolyser'].append(temp)
+                    self.dictResult['input']['powerElectrolyserRaw'][i,n] = powerElectrolyserRaw[i,n]
+                    for k in range(0,4):
+                        self.dictResult['input']['modeElectrolyserRaw'][i,n,k] = modeElectrolyserRaw[i,n,k]
+                        
+                self.dictResult['input']['powerElectrolyser'].append(temp)
 
 
 
@@ -290,6 +251,37 @@ class Result():
             solution = optModel.m.getAttr('X', optModel.OptVarActualPowerOutBatterySold)
             for i in self.arrTime:
                 self.dictResult['input']['actualPowerOutBatterySold'].append(solution[i])
+
+
+            
+            self.dictResult['input']['usedOperationPointCO2CAP'] = 0
+            self.dictResult['input']['usedOperationPointCO2CAPRaw'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarUsedOperationPointCO2CAP)
+            for i in cm.arrOperationPointsCO2CAP[4:]:
+                self.dictResult['input']['usedOperationPointCO2CAPRaw'].append(solution[i])
+                if solution[i] == 1:     
+                    self.dictResult['input']['usedOperationPointCO2CAP'] = i
+
+            self.dictResult['input']['usedOperationPointSYN'] = 0
+            self.dictResult['input']['usedOperationPointSYNRaw'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarUsedOperationPointSYN)
+            for i in cm.arrOperationPointsSYN[4:]:
+                self.dictResult['input']['usedOperationPointSYNRaw'].append(solution[i])
+                if solution[i] == 1:     
+                    self.dictResult['input']['usedOperationPointSYN'] = i
+
+            self.dictResult['input']['usedOperationPointDIS'] = 0
+            self.dictResult['input']['usedOperationPointDISRaw'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarUsedOperationPointDIS)
+            for i in cm.arrOperationPointsDIS[4:]:
+                self.dictResult['input']['usedOperationPointDISRaw'].append(solution[i])
+                if solution[i] == 1:     
+                    self.dictResult['input']['usedOperationPointDIS'] = i
+
+            self.dictResult['input']['UsedOperationPointElec'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarUsedOperationPointElectrolyser)
+            for n in elec.arrEnapterModules: 
+                self.dictResult['input']['UsedOperationPointElec'].append(solution[n])
 
       
 
@@ -404,14 +396,14 @@ class Result():
         with open('input_data.pkl','wb') as f:
             pickle.dump(self.dictResult,f)
 
-        with open('param_data.pkl','wb') as f:
-            pickle.dump(self.param.param,f)
+        #with open('param_data.pkl','wb') as f:
+        #    pickle.dump(self.param.param,f)
 
         with open('input_data_' + date_time + '.pkl', 'wb') as f:
             pickle.dump(self.dictResult,f)
 
-        with open('param_data_' + date_time + '.pkl', 'wb') as f:
-            pickle.dump(self.param.param,f)
+        #with open('param_data_' + date_time + '.pkl', 'wb') as f:
+        #    pickle.dump(self.param.param,f)
 
     
     def funcVisualizationResult(self, OptModel, cm, elec, pv, pp, ci):

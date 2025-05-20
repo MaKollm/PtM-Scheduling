@@ -16,7 +16,7 @@ class Simulation():
 
     def funcUpdate(self, param):
         self.param = param
-        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']+1))
+        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
         self.dictOutput = {}
         self.dictCosts = {}
         self.arrConstrViolationInput = []

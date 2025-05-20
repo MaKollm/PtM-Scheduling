@@ -13,37 +13,37 @@ class CarbonIntensity():
 
     def __init__(self, param):
         self.param = param
-        self.iStartInit = 24*1 
-        self.iStart = self.iStartInit
-        self.iStop = self.param.param['controlParameters']['numberOfTimeSteps']
-
-        self.iNumberUncertaintySamples = self.param.param['prices']['numberOfUncertaintySamples']
-
-        self.arrCarbonIntensityHourly = []
-
-        # Carbon intensity
-        DataFrameCarbonIntensityCharts = pd.read_csv(self.param.param['controlParameters']['pathPPData'] + "\DE_carbon_intensity_2023_hourly.csv")
-        arrCarbonIntensityCharts = DataFrameCarbonIntensityCharts.to_numpy()
-
-        self.arrCarbonIntensityAll = []
-        for i in range(0, len(arrCarbonIntensityCharts)):
-           self.arrCarbonIntensityAll.append(arrCarbonIntensityCharts[i][4])
-    
-
+        self.funcLoadCSV()
 
     def funcUpdate(self, param, iteration):
         self.param = param
-        self.iStart = self.iStartInit + self.param.param['controlParameters']['numHoursToSimulate']*iteration#24*7*iteration#25#iteration
-        self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
+        if param.param['controlParameters']['useRealForecast'] == True:
+            self.iStart = 0
+            self.iStop  = self.param.param["controlParameters"]["optimizationHorizon"]
+            self.arrCarbonIntensityHourly = np.zeros(self.iStop-self.iStart)
+        else:
+            self.funcUpdateCSV(param)
 
-        self.arrCarbonIntensityHourly = []
-        self.arrCarbonIntensityHourly.append(0)
+    def funcLoadCSV(self):
+        self.DataFrameEnergyCharts = pd.read_csv(self.param.param['controlParameters']['pathPPData'] + r"\\DE_carbon_intensity_2023_hourly.csv",dtype = str)
+        self.DataFrameEnergyCharts = self.DataFrameEnergyCharts.set_index("Datetime (UTC)", drop = True)
+        self.DataFrameEnergyCharts.index = pd.to_datetime(self.DataFrameEnergyCharts.index, utc=True).tz_convert("Europe/Berlin").tz_localize(None)
+        self.DataFrameEnergyCharts = self.DataFrameEnergyCharts[["Carbon Intensity gCO₂eq/kWh (direct)"]]
+        self.DataFrameEnergyCharts["Carbon Intensity gCO₂eq/kWh (direct)"] = self.DataFrameEnergyCharts["Carbon Intensity gCO₂eq/kWh (direct)"].astype(float)
 
-        for i in range(self.iStart, self.iStop):
-            self.arrCarbonIntensityHourly.append(self.arrCarbonIntensityAll[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))])
+        self.arrCarbonIntensityHourlyAll = self.DataFrameEnergyCharts["Carbon Intensity gCO₂eq/kWh (direct)"].to_numpy()
 
-        #self.funcAddUncertainty()
-        self.iNumberUncertaintySamples = self.param.param['carbonIntensity']['numberOfUncertaintySamples']
+    #trims arrPowerPriceHourlyAll to depending on start_time and numHoursToSimulate, saves trimmed array as arrPowerPriceHourly
+    def funcUpdateCSV(self, param):
+        start = self.param.param["controlParameters"]["startTimeIteration"]
+        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"])
+
+        index = self.DataFrameEnergyCharts.index
+        
+        self.iStart = index.searchsorted(start)
+        self.iStop  = index.searchsorted(end, side="right")
+
+        self.arrCarbonIntensityHourly = self.arrCarbonIntensityHourlyAll[self.iStart:self.iStop]   
 
 
     def funcAddUncertainty(self):
@@ -73,18 +73,3 @@ class CarbonIntensity():
                     self.arrCarbonIntensitySamples[j][i] = 0
 
                 self.arrCarbonIntensitySamples[j][0] = 0
-
-        """
-        x = list(range(0,len(self.arrPowerPriceHourly)))
-        for i in range(0, self.iNumberUncertaintySamples):
-            plt.plot(x,self.arrCarbonIntensitySamples[i],'--r')
-
-        plt.plot(x,self.arrPowerPriceHourly,'-b',linewidth=2)
-        plt.show()
-        """
-
-        
-    def funcGetRealData(self):
-        driver = webdriver.Edge()
-
-        driver.get("https://www.nordpoolgroup.com/en/Market-data1/Dayahead/Area-Prices/de-lu/hourly/?view=table")

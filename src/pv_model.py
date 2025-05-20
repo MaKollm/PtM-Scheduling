@@ -5,7 +5,6 @@ import pvlib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import requests
 import json
 from scipy.io import savemat
 
@@ -13,6 +12,10 @@ from pvlib.location import Location
 from pvlib.modelchain import ModelChain
 from pvlib.temperature import TEMPERATURE_MODEL_PARAMETERS
 from pvlib.pvsystem import PVSystem
+
+import openmeteo_requests
+import requests_cache
+from retry_requests import retry
 
 ########################
 ########## PV ##########
@@ -26,44 +29,48 @@ from pvlib.pvsystem import PVSystem
 class PV():
     def __init__(self, param):
         self.param = param
-        self.iStartInit = 24*1 #+ 24*7*25   #312
         self.strModule = self.param.param['pv']['module']
         self.strInverter = self.param.param['pv']['inverter']
-        self.strPvLat = "49.09"
-        self.strPvLon = "8.44"
+        self.strPvLat = self.param.param["pv"]["strPvLat"]
+        self.strPvLon = self.param.param["pv"]["strPvLon"]
         self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
         self.fAlpha = self.param.param['pv']['alpha']
         self.fCovValue = self.param.param['pv']['covariance']
 
-        self.funcCreateData()
-        #self.funcUpdate(param, 0)
+        self.funcLoadCSV()
 
 
     def funcUpdate(self, param, iteration):
         self.param = param
 
-        self.iStart = self.iStartInit + self.param.param['controlParameters']['numHoursToSimulate']*iteration#24*7*iteration#25#iteration
-        self.iStop = self.iStart + self.param.param['controlParameters']['numberOfTimeSteps']
+        self.funcGetOnlineData()
+        self.funcCreatePowerData(use_csv=self.param.param['controlParameters']['useRealForecast'])
 
-        self.arrPowerAvailable = []
-        self.arrPowerAvailable.append(0)
+        #timestamps are saved in param
+        start = self.param.param["controlParameters"]["startTimeIteration"]
+        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"])
 
-        for i in range(self.iStart, self.iStop):
-            if param.param['controlParameters']['considerPV'] == True:
-                self.arrPowerAvailable.append(self.pvdata[int(self.iStart + self.param.param['controlParameters']['timeStep']*(i-self.iStart))] * self.param.param['controlParameters']['timeStep'])
-            else:
-                self.arrPowerAvailable.append(0)
+        index = self.csv_poa_data.index
         
-        self.funcAddUncertainty()
+        self.iStart = index.searchsorted(start)
+        self.iStop  = index.searchsorted(end, side="right")
+
+        if param.param["controlParameters"]["considerPV"] == True:
+            self.arrPowerAvailable = self.pvdata[self.iStart:self.iStop]
+
+        else:
+            self.arrPowerAvailable = np.zeros(self.iStop-self.iStart)
+
         self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
         self.fAlpha = self.param.param['pv']['alpha']
         self.iCovValue = self.param.param['pv']['covariance']
+        #self.funcAddUncertainty()
 
-    def funcCreateData(self):
 
+    def funcLoadCSV(self):
         # Weather
-        global_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_global_2023.csv", skiprows=10, nrows = 8751,index_col=0)
-        components_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+        global_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + r"\\pvgis_global_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+        components_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + r"\\pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
     
 
         poa_data = pd.DataFrame(columns=[
@@ -77,11 +84,63 @@ class PV():
         poa_data['temp_air'] = components_data['T2m']
         poa_data['wind_speed'] = components_data['WS10m']
         poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
-        
-        poa_data.to_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data.csv")
+        self.csv_poa_data = poa_data
+
+
+    def funcGetOnlineData(self):
+
+        # Setup the Open-Meteo API client with cache and retry on error
+        cache_session = requests_cache.CachedSession(".cache",expire_after = 3600)
+        retry_session = retry(cache_session, retries = 5,backoff_factor = 0.2)
+        openmeteo = openmeteo_requests.Client(session = retry_session)
+
+        #Specifications for request
+        url = "https://api.open-meteo.com/v1/forecast"
+        specs = {
+            "latitude": float(self.strPvLat),
+            "longitude": float(self.strPvLon),
+            "hourly": ["temperature_2m", "wind_speed_10m", "global_tilted_irradiance_instant", "direct_normal_irradiance_instant", "diffuse_radiation_instant"],
+            "timezone": "Europe/Berlin" 
+        }
+
+        #request parameters
+        responses = openmeteo.weather_api(url, params=specs)
+
+        #hourly data to numpy
+        responses = responses[0]
+        hourly = responses.Hourly()
+        hourly_temperature_2m = hourly.Variables(0).ValuesAsNumpy()
+        hourly_wind_speed_10m = hourly.Variables(1).ValuesAsNumpy()
+        hourly_global_tilted_irradiance_instant = hourly.Variables(2).ValuesAsNumpy()
+        hourly_direct_normal_irradiance_instant = hourly.Variables(3).ValuesAsNumpy()
+        hourly_diffuse_radiation_instant = hourly.Variables(4).ValuesAsNumpy()
+
+        #data to pandas Dataframe
+        hourly_data = {"date": pd.date_range(
+            start = pd.to_datetime(hourly.Time(), unit = "s", utc = True).tz_convert("Europe/Berlin").tz_localize(None), #tz_convert converts to german time, tz_localize drops the utc information
+            end = pd.to_datetime(hourly.TimeEnd(), unit = "s", utc = True).tz_convert("Europe/Berlin").tz_localize(None),
+            freq = pd.Timedelta(seconds = hourly.Interval()),
+            inclusive = "left"
+        )}
+
+        #print(hourly_data)
+
+        #order important
+        hourly_data["poa_global"] = hourly_global_tilted_irradiance_instant
+        hourly_data["poa_direct"] = hourly_direct_normal_irradiance_instant
+        hourly_data["poa_diffuse"] = hourly_diffuse_radiation_instant
+        hourly_data["temp_air"] = hourly_temperature_2m
+        hourly_data["wind_speed"] = hourly_wind_speed_10m
+
+        hourly_dataframe = pd.DataFrame(data = hourly_data)
+        hourly_dataframe = hourly_dataframe.set_index("date")
+        self.online_poa_data = hourly_dataframe
+
+
+    def funcCreatePowerData(self, use_csv = False):
 
         # PV
-        location = Location(latitude=49.09, longitude=8.44,tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
+        location = Location(latitude = float(self.strPvLat), longitude = float(self.strPvLon),tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
 
         sandia_modules = pvlib.pvsystem.retrieve_sam('SandiaMod')
         sapm_inverters = pvlib.pvsystem.retrieve_sam('cecinverter')
@@ -98,10 +157,12 @@ class PV():
         
         modelChain = ModelChain(system, location)
 
-        poa_data_Used = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + "\poa_data.csv", index_col=0)
-        poa_data_Used.index = pd.to_datetime((poa_data.index))
+        if use_csv == True:
+            modelChain.run_model_from_poa(self.csv_poa_data)
 
-        modelChain.run_model_from_poa(poa_data_Used)
+        else:
+            modelChain.run_model_from_poa(self.online_poa_data)
+
 
         pvData_Series = modelChain.results.ac
         self.dataRaw = pvData_Series.to_numpy()
@@ -112,28 +173,6 @@ class PV():
 
             self.pvdata.append(self.dataRaw[i] * self.param.param['pv']['powerOfSystem'] / self.param.param['pv']['powerOfModule'] / 1000)
 
-        """
-        x = list(range(0,len(self.pvdata)))
-
-        plt.plot(x,self.pvdata,'-b',linewidth=2)
-        plt.xlabel("time in h")
-        plt.ylabel("power in kWh")
-
-        plt.show()
-
-        plt.plot(x,pv_pvgis,'-b',linewidth=2)
-        plt.xlabel("time in h")
-        plt.ylabel("power in kWh")
-
-        plt.show()
-        """
-
-        #pvData = {"pv": self.pvdata}
-        #savemat('C:/PROJEKTE/PTX/Max/50_Daten/05_PV/pv_data_2020.mat', pvData)
-
-
-        #modelChain.results.ac.plot(figsize=(16,9))
-        #plt.show()
 
     def funcAddUncertainty(self):
         arrCov = np.zeros((len(self.arrPowerAvailable),len(self.arrPowerAvailable)))
@@ -157,35 +196,4 @@ class PV():
 
         self.arrPvSamples = arrPvSamples
 
-        """
-        x = list(range(0,len(self.powerAvailable)))
-        for i in range(0,self.numberUncertaintySamples):
-            plt.plot(x,pvSamples[i],'--r')
- 
-        plt.plot(x,self.powerAvailable,'-b',linewidth=2)
-        plt.xlabel("time in h")
-        plt.ylabel("power in kWh")
-        plt.show()
-        """
         
-
-    def funcGetRealData(self):
-        
-        locationCheck = "https://api.forecast.solar/check/" + self.pvLat + "/" + self.pvLon
-        location = requests.get(locationCheck)
-
-        my_json = location.content.decode('utf8')
-
-        a = json.loads(my_json)
-        print(a)
-        print(a["result"])
-        print(a["result"]["place"])
-
-        response = requests.get("https://api.forecast.solar/estimate/watthours/52/12/37/0/5.67")
-        #print(response)
-        #print(response.content)
-
-        with open(r"C:\Users\ne9836\Promotion_IAI\50_Daten\05_PV\pvData.json","w") as outfile:
-            json.dump(a, outfile)
-
-        #curl https://api.forecast.solar/estimate/watthours/52/12/37/0/5.67
