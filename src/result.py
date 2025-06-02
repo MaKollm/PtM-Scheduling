@@ -396,6 +396,6 @@ class Result():
         ###################################
         ########## Visualization ########## 
 
-        #visu(self.dictResult)
+        visu(self.dictResult)
         pass
     

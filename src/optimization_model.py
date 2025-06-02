@@ -145,12 +145,16 @@ class Optimization_Model():
         
         self.OptVarUsageOfPV = self.m.addVars(self.arrTime,lb=0.0,ub=1000,vtype=GRB.CONTINUOUS)
 
+        self.OptVarUsageOfWind = self.m.addVars(self.arrTime,lb=0.0,ub=1000,vtype=GRB.CONTINUOUS)
+
         self.OptVarPowerInBatteryPV = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
+        self.OptVarPowerInBatteryWind = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerInBatteryBought = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerOutBattery = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minDischargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerOutBatterySold = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minDischargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
         self.OptVarActualPowerInBatteryPV = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
+        self.OptVarActualPowerInBatteryWind = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerInBatteryBought = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerOutBattery = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerOutBatterySold = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
@@ -160,6 +164,8 @@ class Optimization_Model():
 
         self.OptVarIndicatorBatteryCharging2 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
         self.OptVarIndicatorBatteryDischarging2 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
+
+        self.OptVarIndicatorBatteryCharging3 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
 
         self.OptVarPowerBought = self.m.addVars(self.arrTime,lb=0.0,ub=100,vtype=GRB.CONTINUOUS)
 
@@ -534,10 +540,19 @@ class Optimization_Model():
             #self.m.addConstrs(
             #    self.OptVarPowerInBatteryPV[t] == 0 for t in self.arrTime)
 
+        
+        ## Wind considered
+        if self.param.param['controlParameters']['considerWind'] == False:
+            self.m.addConstrs(
+                self.OptVarUsageOfWind[t] == 0 for t in self.arrTime)
+
+
         ## Battery considered
         if self.param.param['controlParameters']['considerBattery'] == False:
             self.m.addConstrs(
                 self.OptVarActualPowerInBatteryPV[t] == 0 for t in self.arrTime)
+            self.m.addConstrs(
+                self.OptVarActualPowerInBatteryWind[t] == 0 for t in self.arrTime)
             self.m.addConstrs(
                 self.OptVarActualPowerInBatteryBought[t] == 0 for t in self.arrTime)
             self.m.addConstrs(
@@ -557,7 +572,7 @@ class Optimization_Model():
         ## Power Constraints
         # Power from battery and PV and grid to electrolyser and components must equal to needed power
         self.m.addConstrs(
-            (self.OptVarActualPowerOutBattery[t] * self.param.param['battery']['efficiency'] + self.OptVarUsageOfPV[t] + self.OptVarPowerBought[t] - self.OptVarActualPowerInBatteryBought[t] == 
+            (self.OptVarActualPowerOutBattery[t] * self.param.param['battery']['efficiency'] + self.OptVarUsageOfPV[t] + self.OptVarUsageOfWind[t] + self.OptVarPowerBought[t] - self.OptVarActualPowerInBatteryBought[t] == 
             gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
             + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarModeElectrolyser[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
             + cm.powerPlantComponentsUnit1[0] * self.OptVarOperationPointCO2CAP[(t,0)] * self.OptVarCurrentStateCO2CAP[(t,0)] * fTimeStep
@@ -603,6 +618,13 @@ class Optimization_Model():
             (self.OptVarActualPowerInBatteryBought[t] >= self.OptVarPowerInBatteryBought[t] - (1 - self.OptVarIndicatorBatteryCharging2[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from power bought 2")
         
         self.m.addConstrs(
+            (self.OptVarActualPowerInBatteryWind[t] == self.OptVarIndicatorBatteryCharging3[t] * self.OptVarPowerInBatteryWind[t] for t in self.arrTime[1:]), "Battery actual charging power from wind")      
+        self.m.addConstrs(
+            (self.OptVarActualPowerInBatteryWind[t] <= self.OptVarPowerInBatteryWind[t] - (1 - self.OptVarIndicatorBatteryCharging3[t]) * self.param.param['battery']['minChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from wind 1")
+        self.m.addConstrs(
+            (self.OptVarActualPowerInBatteryWind[t] >= self.OptVarPowerInBatteryWind[t] - (1 - self.OptVarIndicatorBatteryCharging3[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from wind 2")        
+        
+        self.m.addConstrs(
             (self.OptVarActualPowerOutBattery[t] == self.OptVarIndicatorBatteryDischarging1[t] * self.OptVarPowerOutBattery[t] for t in self.arrTime[1:]), "Battery actual discharging power")     
         self.m.addConstrs(
             (self.OptVarActualPowerOutBattery[t] <= self.OptVarPowerOutBattery[t] - (1 - self.OptVarIndicatorBatteryDischarging1[t]) * self.param.param['battery']['minChargeRate'] for t in self.arrTime[1:]), "Battery actual discharging power min rate 1")
@@ -624,11 +646,15 @@ class Optimization_Model():
             (self.OptVarIndicatorBatteryCharging2[t] + self.OptVarIndicatorBatteryDischarging1[t] <= 1 for t in self.arrTime[1:]), "Battery charging and discharging")
         self.m.addConstrs(
             (self.OptVarIndicatorBatteryCharging2[t] + self.OptVarIndicatorBatteryDischarging2[t] <= 1 for t in self.arrTime[1:]), "Battery charging and discharging")
+        self.m.addConstrs(
+            (self.OptVarIndicatorBatteryCharging3[t] + self.OptVarIndicatorBatteryDischarging1[t] <= 1 for t in self.arrTime[1:]), "Battery charging and discharging")
+        self.m.addConstrs(
+            (self.OptVarIndicatorBatteryCharging3[t] + self.OptVarIndicatorBatteryDischarging2[t] <= 1 for t in self.arrTime[1:]), "Battery charging and discharging")
         
         
         # Charge and discharge rate have to be smaller than maximum rate
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['battery']['maxChargeRate'] for t in self.arrTime), "Battery max charge rate")
+            (self.OptVarActualPowerInBatteryBought[t] + self.OptVarActualPowerInBatteryPV[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['battery']['maxChargeRate'] for t in self.arrTime), "Battery max charge rate")
         self.m.addConstrs(
             (self.OptVarActualPowerOutBattery[t] + self.OptVarActualPowerOutBatterySold[t] <= self.param.param['battery']['maxDischargeRate'] for t in self.arrTime), "Battery max discharge rate")        
 
@@ -650,6 +676,9 @@ class Optimization_Model():
         # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV
         self.m.addConstrs(
             (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime[1:]), "PV upper bound available")
+        
+        #self.m.addConstrs(
+        #    (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wind']['powerAvailable'][t] for t in self.arrTime[1:]), "Wind upper bound available")
 
 
         ## Minimum operation point/operation mode constraint

@@ -34,16 +34,17 @@ class Param():
             self.powerSale = args[13]
             self.powerPurchase = args[14]
             self.considerPV = args[15]
-            self.considerBattery = args[16]
-            self.peakLoadCapping = args[17]
+            self.considerWind = args[16]
+            self.considerBattery = args[17]
+            self.peakLoadCapping = args[18]
 
 
-            self.strPathCharMapData = args[18]
-            self.strPathCharMapDataCalc = args[19]
-            self.strPathPVData = args[20]
-            self.strPathPPData = args[21]
-            self.strPathInitialData = args[22]
-            self.strPathAdaptationData = args[23]
+            self.strPathCharMapData = args[19]
+            self.strPathCharMapDataCalc = args[20]
+            self.strPathPVData = args[21]
+            self.strPathPPData = args[22]
+            self.strPathInitialData = args[23]
+            self.strPathAdaptationData = args[24]
         
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
@@ -53,6 +54,8 @@ class Param():
 
     def funcUpdate(self, pv, pp, ci, iteration):
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
+        self.param['wind']['powerAvailable'] = 0
+        #self.param['wind']['powerAvailable'] = wind.arrPowerAvailable
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         self.param['carbonIntensity']['carbonIntensity'] = ci.arrCarbonIntensityHourly
 
@@ -230,6 +233,7 @@ class Param():
         self.param['controlParameters']['powerSale'] = self.powerSale
         self.param['controlParameters']['powerPurchase'] = self.powerPurchase
         self.param['controlParameters']['considerPV'] = self.considerPV
+        self.param['controlParameters']['considerWind'] = self.considerWind
         self.param['controlParameters']['considerBattery'] = self.considerBattery
         self.param['controlParameters']['peakLoadCapping'] = self.peakLoadCapping
         self.param['controlParameters']['pathCharMapData'] = self.strPathCharMapData
@@ -360,6 +364,18 @@ class Param():
         self.param['pv']['covariance'] = 8
         self.param["pv"]["strPvLat"] = "49.09"
         self.param["pv"]["strPvLon"] = "8.44"
+
+
+
+        ## Wind
+        self.param['wind'] = {}
+        self.param['wind']['powerOfModule'] = 0.22
+        self.param['wind']['powerOfSystem'] = 200
+        self.param['wind']['numberOfUncertaintySamples'] = 100
+        self.param['wind']['alpha'] = 0.9
+        self.param['wind']['covariance'] = 8
+        self.param["wind"]["strWindLat"] = "49.09"
+        self.param["wind"]["strWindLon"] = "8.44"
 
 
 

@@ -25,7 +25,7 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 4*24                 # Considered time period in hours
+optimizationHorizon = 2*24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
 timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
@@ -43,7 +43,8 @@ rateOfChangeConstranints = False            # If true rate of change constraints
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = False                          # If true pv data will be considered, otherwise it is set to zero
+considerPV = True                          # If true pv data will be considered, otherwise it is set to zero
+considerWind = False                        # If true wind data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
@@ -71,6 +72,7 @@ args = [optimizationHorizon,
             powerSale, 
             powerPurchase,
             considerPV, 
+            considerWind,
             considerBattery, 
             peakLoadCapping,
             strPathCharMapData,

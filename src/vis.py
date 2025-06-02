@@ -322,4 +322,4 @@ def createGif(results):
 
 
 #load_and_visu()
-load_and_createGif()
+#load_and_createGif()
