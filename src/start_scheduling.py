@@ -25,13 +25,13 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 2*24                 # Considered time period in hours
+optimizationHorizon = 4*24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
 timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2023-01-01 00:00")
+startTime = pd.Timestamp("2023-01-01 01:00")
 useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
@@ -43,7 +43,7 @@ rateOfChangeConstranints = False            # If true rate of change constraints
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = False                           # If true pv data will be considered, otherwise it is set to zero
+considerPV = False                          # If true pv data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
@@ -192,12 +192,13 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
 
 def main(argWorkflow):
     for j in range(0, 1):
+        results = []
         param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcInitialize(args, j)
 
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 1
+        numberOfIterations = 5
 
 
         bUseCalcCharMap = False
@@ -206,10 +207,12 @@ def main(argWorkflow):
 
         if scheduleMoreTimes == True:
             for i in range(0, numberOfIterations):           
-                dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)        
+                dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)  
+                results.append(copy.deepcopy(dataOpt.dictResult))      
         else:
             dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
-            
+
+        createGif(results)
 
         startDrift = 10
         endDrift = 15

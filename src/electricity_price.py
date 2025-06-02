@@ -28,7 +28,6 @@ class PowerPrice():
             data["prices"] = data["prices"].astype(float) / 1000
             self.arrPowerPriceHourly = data["prices"].to_numpy()
             self.arrPowerPriceHourly = self.arrPowerPriceHourly[self.iStart:self.iStop]
-            print(len(self.arrPowerPriceHourly))
         else:
             self.funcUpdateCSV(param)
 
@@ -47,6 +46,7 @@ class PowerPrice():
     def funcUpdateCSV(self, param):
         start = self.param.param["controlParameters"]["startTimeIteration"]
         end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
+
 
         index = self.DataFrameEnergyCharts.index
         

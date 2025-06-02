@@ -50,7 +50,7 @@ class Optimization_Model():
     def funcSetInitialValues(self, cm, elec, pv, pp, ci):
         if "initialData" in self.param.param:
             # Check if the time horizon of the initial data is the same as the time horizon of the current optimization
-            if self.param.param['initialData']["param"]['controlParameters']['numTimeStepsToSimulate'] == self.param.param['controlParameters']['numTimeStepsToSimulate']:
+            if self.param.param['initialData']["param"]['controlParameters']['numberOfTimeSteps'] == self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['initialData']["param"]['optimization']['status'] != GRB.INFEASIBLE:
 
                 for t in self.arrTime:
                     for i in cm.arrOperationPointsCO2CAP:
@@ -232,6 +232,7 @@ class Optimization_Model():
             self.m.addConstrs(
                 (self.OptVarModeElectrolyser[(t,n-1,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime for n in elec.arrEnapterModules[1:] for m in elec.arrModes), "fdsa")
             
+            # Maximal einmal hochfahren im Benchmark
             self.m.addConstr(
                 (gp.quicksum(self.OptVarCurrentStateSwitchCO2CAP[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
             self.m.addConstr(
@@ -240,6 +241,14 @@ class Optimization_Model():
                 (gp.quicksum(self.OptVarCurrentStateSwitchDIS[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
             self.m.addConstrs(
                 (gp.quicksum(self.OptVarModeElectrolyser[(t,n,0)] for t in self.arrTime) <= 1 for n in elec.arrEnapterModules), "fdsa")
+            
+            # Kein Standby im Benchmark
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateCO2CAP[(t,2)] for t in self.arrTime) == 0), "fdsa")
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateSYN[(t,2)] for t in self.arrTime) == 0), "fdsa")
+            self.m.addConstr(
+                (gp.quicksum(self.OptVarCurrentStateDIS[(t,2)] for t in self.arrTime) == 0), "fdsa")
 
             """
             if self.param.param['controlParameters']['transitionConstraints'] == True:
@@ -307,16 +316,27 @@ class Optimization_Model():
 
 
 
-        if self.param.param['controlParameters']['numTimeStepsToSimulate'] < self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['controlParameters']['iteration'] > 0:
-            for t in range(0,min):
-                self.m.addConstr(self.OptVarCurrentStateCO2CAP[(t,self.param.param['startValues']['stateCO2CAP'])] == 1)
-        
-            self.m.addConstr(self.OptVarCurrentStateCO2CAP[(max,self.param.param['startValues']['stateCO2CAP'])] == 0)
-
-
-
-
         if self.param.param['controlParameters']['transitionConstraints'] == True:
+            ## Minimum and maximum stay time per mode after new schedule
+            if self.param.param['controlParameters']['numTimeStepsToSimulate'] < self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['controlParameters']['iteration'] > 0:
+                for t in range(0,self.param.param['constraints']['transitionTimesStart']['minStayTimeCO2CAP']):
+                    self.m.addConstr(self.OptVarCurrentStateCO2CAP[(t,self.param.param['startValues']['stateCO2CAP'])] == 1)
+            
+                if self.param.param['constraints']['transitionTimesStart']['maxStayTimeCO2CAP'] < self.param.param['controlParameters']['numberOfTimeSteps']:
+                    self.m.addConstr(self.OptVarCurrentStateCO2CAP[(self.param.param['constraints']['transitionTimesStart']['maxStayTimeCO2CAP'],self.param.param['startValues']['stateCO2CAP'])] == 0)
+
+                for t in range(0,self.param.param['constraints']['transitionTimesStart']['minStayTimeSYN']):
+                    self.m.addConstr(self.OptVarCurrentStateSYN[(t,self.param.param['startValues']['stateSYN'])] == 1)
+            
+                if self.param.param['constraints']['transitionTimesStart']['maxStayTimeSYN'] < self.param.param['controlParameters']['numberOfTimeSteps']:
+                    self.m.addConstr(self.OptVarCurrentStateSYN[(self.param.param['constraints']['transitionTimesStart']['maxStayTimeSYN'],self.param.param['startValues']['stateSYN'])] == 0)
+
+                for t in range(0,self.param.param['constraints']['transitionTimesStart']['minStayTimeDIS']):
+                    self.m.addConstr(self.OptVarCurrentStateDIS[(t,self.param.param['startValues']['stateDIS'])] == 1)
+            
+                if self.param.param['constraints']['transitionTimesStart']['maxStayTimeSYN'] < self.param.param['controlParameters']['numberOfTimeSteps']:
+                    self.m.addConstr(self.OptVarCurrentStateDIS[(self.param.param['constraints']['transitionTimesStart']['maxStayTimeDIS'],self.param.param['startValues']['stateDIS'])] == 0)
+    
             ## Minimum stay time per mode
         
             self.m.addConstrs(
@@ -660,6 +680,7 @@ class Optimization_Model():
 
 
         ## Initial time step constraints
+
         # No operation point for Synthesis in initial time step
         self.m.addConstr(
             (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
@@ -681,6 +702,7 @@ class Optimization_Model():
         # No power in electrolyser in initial time step
         self.m.addConstrs(
             (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
+
         # No input or output for battery in first time step
         self.m.addConstr(
             (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
@@ -751,6 +773,7 @@ class Optimization_Model():
         ## Methanol water storage constraints
         methanol_water_mass_flow_in = 0
         methanol_water_mass_flow_out = 0
+        filling_level_storage_methanol_water = []
         
         for t in self.arrTime:
         # Precompute constant terms
@@ -768,58 +791,23 @@ class Optimization_Model():
                                                                         + gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
                                                                         + cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep)
 
+            filling_level_storage_methanol_water.append(self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out)
+            
             # Create the constraint
             self.m.addConstr(
-                self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}")
-        
+                filling_level_storage_methanol_water[t] <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}")
             self.m.addConstr(
-                self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
+                filling_level_storage_methanol_water[t] >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
+            #self.m.addConstr(
+            #    self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}") 
+            #self.m.addConstr(
+            #    self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
         
-        """
-        self.m.addConstr(
-            (self.param['constraints']['methanolWaterStorageEqualValue'] - 
-            (self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,0)] * self.OptVarCurrentStateDIS[(t,0)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,1)] * self.OptVarCurrentStateDIS[(t,1)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,2)] * self.OptVarCurrentStateDIS[(t,2)] * fTimeStep for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime[:-self.param['controlParameters']['numTimeStepsToHorizonEnd']])
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep for t in self.arrTime)) 
-                <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage methanol water equal filling upper bound")
-        """
 
         self.m.addConstr(
-            (self.param.param['storageMethanolWater']['InitialFilling'] - 
-            (self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,0)] * self.OptVarCurrentStateDIS[(t,0)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,1)] * self.OptVarCurrentStateDIS[(t,1)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,2)] * self.OptVarCurrentStateDIS[(t,2)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep for t in self.arrTime)) 
-                <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage methanol water equal filling upper bound")
+            (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
         self.m.addConstr(
-            (self.param.param['storageMethanolWater']['InitialFilling'] - 
-            (self.param.param['storageMethanolWater']['InitialFilling'] 
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime)
-                + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,0)] * self.OptVarCurrentStateDIS[(t,0)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,1)] * self.OptVarCurrentStateDIS[(t,1)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,2)] * self.OptVarCurrentStateDIS[(t,2)] * fTimeStep for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime)
-                - gp.quicksum(cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep for t in self.arrTime)) 
-                >= self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']), "Storage methanol water equal filling lower bound")
+            (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] >= self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']), "Storage H2 equal filling lower bound")
 
 
 
@@ -830,35 +818,34 @@ class Optimization_Model():
         battery_fill_equal_lb = battery_initial_charge*self.param.param['constraints']['storagesFactorFillEqualLower']
         battery_fill_equal_ub = -battery_initial_charge*self.param.param['constraints']['storagesFactorFillEqualUpper'] 
 
-        self.m.addConstrs(
-            (battery_initial_charge 
-            + gp.quicksum(self.OptVarActualPowerInBatteryPV[l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:t+1])
-            + gp.quicksum(self.OptVarActualPowerInBatteryBought[l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:t+1])  
-            - gp.quicksum(self.OptVarActualPowerOutBattery[l] for l in self.arrTime[0:t+1])
-            - gp.quicksum(self.OptVarActualPowerOutBatterySold[l] for l in self.arrTime[0:t+1])
-            <= battery_power for t in self.arrTime), "Battery upper bound")
+        battery_in = 0
+        battery_out = 0
+        battery_charge = []
+        
+        for t in self.arrTime:
+        # Precompute constant terms
 
-        self.m.addConstrs(
-            (battery_initial_charge 
-            + gp.quicksum(self.OptVarActualPowerInBatteryPV[l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:t+1])
-            + gp.quicksum(self.OptVarActualPowerInBatteryBought[l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:t+1])  
-            - gp.quicksum(self.OptVarActualPowerOutBattery[l] for l in self.arrTime[0:t+1])
-            - gp.quicksum(self.OptVarActualPowerOutBatterySold[l] for l in self.arrTime[0:t+1])
-            >= battery_min_charge for t in self.arrTime), "Battery lower bound")
+            # Calculate intermediate expressions
+            battery_in = battery_in + (self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency']
+                                    + self.OptVarActualPowerInBatteryBought[t] * self.param.param['battery']['efficiency'])
+            
+            battery_out = battery_out + (self.OptVarActualPowerOutBattery[t]
+                                      + self.OptVarActualPowerOutBatterySold[t])
+            
+            battery_charge.append(battery_initial_charge + battery_in - battery_out)
+            
+            # Create the constraint
+            self.m.addConstr(
+                battery_charge[t] <= battery_power, f"Battery upper bound")
+            self.m.addConstr(
+                battery_charge[t] >= battery_min_charge, f"Battery lower bound")
+
 
         self.m.addConstr(
-            (battery_initial_charge - (battery_initial_charge 
-            + gp.quicksum(self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency'] for t in self.arrTime)
-            + gp.quicksum(self.OptVarActualPowerInBatteryBought[t] * self.param.param['battery']['efficiency'] for t in self.arrTime)  
-            - gp.quicksum(self.OptVarActualPowerOutBattery[t] for t in self.arrTime)
-            - gp.quicksum(self.OptVarActualPowerOutBatterySold[t] for t in self.arrTime)) <= battery_fill_equal_lb), "Battery equal charge upper bound")
-
+            (self.param.param['constraints']['batteryChargeEqualValue'] - battery_charge[self.param.param['constraints']['batteryChargeEqualTime']] <= battery_fill_equal_lb), "Battery equal charge upper bound")
         self.m.addConstr(
-            (battery_initial_charge - (battery_initial_charge 
-            + gp.quicksum(self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency'] for t in self.arrTime)
-            + gp.quicksum(self.OptVarActualPowerInBatteryBought[t] * self.param.param['battery']['efficiency'] for t in self.arrTime)  
-            - gp.quicksum(self.OptVarActualPowerOutBattery[t] for t in self.arrTime)
-            - gp.quicksum(self.OptVarActualPowerOutBatterySold[t] for t in self.arrTime)) >= battery_fill_equal_ub), "Battery equal charge lower bound")
+            (self.param.param['constraints']['batteryChargeEqualValue'] - battery_charge[self.param.param['constraints']['batteryChargeEqualTime']] >= battery_fill_equal_ub), "Battery equal charge lower bound")
+
         
 
         

@@ -13,7 +13,7 @@ from scipy.io import savemat
 from datetime import datetime
 import pickle
 
-from vis import visu
+from vis import visu, createGif
 
 
 class Result():
@@ -24,7 +24,7 @@ class Result():
     def funcUpdate(self, param):
         self.param = param
         self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
-        self.dictResult = {'input': {}, 'output': {}, 'costs': {}, 'param': {}}
+        self.dictResult = {'input': {}, 'output_Scheduling': {}, 'output_Sim': {}, 'costs': {}, 'param': {}}
         self.dictResult['param'] = self.param
 
 
@@ -298,8 +298,8 @@ class Result():
         ########## Output ###########
         print('Output variables')
         print('')
-        #for key in self.dictResult['output']:
-        #    print(key + ': ', self.dictResult['output'][key]) 
+        #for key in self.dictResult['output_Scheduling']:
+        #    print(key + ': ', self.dictResult['output_Scheduling'][key]) 
         #    print('----------')
 
         print('#########')
@@ -345,17 +345,17 @@ class Result():
 
         print('Production')
         print('')
-        print('Methanol: ', np.sum(self.dictResult['output']['massFlowMethanolOut']))
-        print('Methan: ' , np.sum(self.dictResult['output']['massFlowBiogasOut']))
+        print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut']))
+        print('Methan: ' , np.sum(self.dictResult['output_Scheduling']['massFlowBiogasOut']))
 
         print('')
-        print('Methanol in last 24h: ', np.sum(self.dictResult['output']['massFlowMethanolOut'][1:self.param.param['controlParameters']['numTimeStepsToSimulate']+1]))
+        print('Methanol in last 24h: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut'][1:self.param.param['controlParameters']['numTimeStepsToSimulate']+1]))
         print('')
         print('##########')
 
         print("Consumption")
         print('Biogas: ', np.sum(self.dictResult['input']['massFlowBiogasIn']))     
-        print('Hydrogen: ', np.sum(self.dictResult['output']['massFlowHydrogenIn']))     
+        print('Hydrogen: ', np.sum(self.dictResult['output_Scheduling']['massFlowHydrogenIn']))     
         print('Electrical power: ', np.sum(self.dictResult['input']['powerBought']))
 
 
@@ -382,28 +382,13 @@ class Result():
         
         savemat("data_" + string + "_" + text + ".mat", resultSave)
         savemat("data_" + string + "_" + text + "_" + date_time + ".mat", resultSave)
-        """
-        savemat("data_" + string + "_" + text + "_input.mat", self.dictResult['input'])
-        savemat("data_" + string + "_" + text + "_output.mat", self.dictResult['output'])
-        savemat("data_" + string + "_" + text + "_costs.mat", self.dictResult['costs'])
-        savemat("data_" + string + "_" + text + "_param.mat", self.dictResult['param'])
-        savemat("data_" + string + "_" + text + "_" + date_time + "_input.mat", self.dictResult['input'])
-        savemat("data_" + string + "_" + text + "_" + date_time + "_output.mat", self.dictResult['output'])
-        savemat("data_" + string + "_" + text + "_" + date_time + "_costs.mat", self.dictResult['costs'])
-        savemat("data_" + string + "_" + text + "_" + date_time + "_param.mat", self.dictResult['param'])
-        """
+
 
         with open('input_data.pkl','wb') as f:
             pickle.dump(self.dictResult,f)
 
-        #with open('param_data.pkl','wb') as f:
-        #    pickle.dump(self.param.param,f)
-
         with open('input_data_' + date_time + '.pkl', 'wb') as f:
             pickle.dump(self.dictResult,f)
-
-        #with open('param_data_' + date_time + '.pkl', 'wb') as f:
-        #    pickle.dump(self.param.param,f)
 
     
     def funcVisualizationResult(self, OptModel, cm, elec, pv, pp, ci):
@@ -411,6 +396,6 @@ class Result():
         ###################################
         ########## Visualization ########## 
 
-        visu(self.dictResult)
+        #visu(self.dictResult)
         pass
     
