@@ -6,6 +6,7 @@ from params import *
 from optimization_model import *
 from electrolyser_model import *
 from pv_model import *
+from wt_model import *
 from result import *
 from electricity_price import *
 from simulation import *
@@ -31,8 +32,8 @@ timeLimit = 1000                           # Time limit for the solver to termin
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2023-01-01 01:00")
-useRealForecast = False
+startTime = pd.Timestamp("2025-06-03 01:00")
+useRealForecast = True
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
@@ -44,9 +45,14 @@ transitionConstraints = True                # If true transition constraints wil
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
 considerPV = True                          # If true pv data will be considered, otherwise it is set to zero
-considerWind = False                        # If true wind data will be considered, otherwise it is set to zero
+considerWT = False                        # If true wind data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
+
+use_pvUnvertainty = False
+pvUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
+use_wtUnvertainty = False
+wtUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
 
 strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\calc'
@@ -72,9 +78,13 @@ args = [optimizationHorizon,
             powerSale, 
             powerPurchase,
             considerPV, 
-            considerWind,
+            considerWT,
             considerBattery, 
             peakLoadCapping,
+            use_pvUnvertainty,
+            pvUncertainty,
+            use_wtUnvertainty,
+            wtUncertainty,
             strPathCharMapData,
             strPathCharMapDataCalc,
             strPathPVData,
@@ -102,6 +112,9 @@ def funcInitialize(args, j):
     ## Create PV
     pv = PV(param)
 
+    ## Create wind turbine
+    wt = WT(param)
+
     ## Create electricity price
     pp = PowerPrice(param)
 
@@ -115,9 +128,9 @@ def funcInitialize(args, j):
     checkResults = CheckSimulationResults(param)
 
     
-    return param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults
+    return param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults
 
-def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults):
+def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults):
     bUseCalcCharMap = argWorkflow[0]
     bUseDriftCharMap = argWorkflow[1]
     timeIteration = argWorkflow[2]
@@ -131,34 +144,35 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
     param.funcUpdateTime(timeIteration)
     elec.funcUpdate(param)
     pv.funcUpdate(param, timeIteration)
+    wt.funcUpdate(param, timeIteration)
     pp.funcUpdate(param, timeIteration)
     ci.funcUpdate(param, timeIteration)
-    param.funcUpdate(pv, pp, ci, timeIteration)
+    param.funcUpdate(pv, wt, pp, ci, timeIteration)
 
     ########## Optimization ########
 
     ## Create models for optimization
     if bUseCalcCharMap == True:
-        optModel.funcCreateOptimizationModel(cmCalc, elec, pv, pp, ci)
+        optModel.funcCreateOptimizationModel(cmCalc, elec, pv, wt, pp, ci)
         optModel.funcRunOptimization()
 
         ## Create results
         resultOpt = Result(param)
-        resultOpt.funcGetResult(optModel, cmCalc, elec, pv, pp, ci)
+        resultOpt.funcGetResult(optModel, cmCalc, elec, pv, wt, pp, ci)
     elif bUseDriftCharMap == True:
-        optModel.funcCreateOptimizationModel(cmDrift, elec, pv, pp, ci)
+        optModel.funcCreateOptimizationModel(cmDrift, elec, pv, wt, pp, ci)
         optModel.funcRunOptimization()
 
         ## Create results
         resultOpt = Result(param)
-        resultOpt.funcGetResult(optModel, cmDrift, elec, pv, pp, ci)
+        resultOpt.funcGetResult(optModel, cmDrift, elec, pv, wt, pp, ci)
     else:
-        optModel.funcCreateOptimizationModel(cm, elec, pv, pp, ci)
+        optModel.funcCreateOptimizationModel(cm, elec, pv, wt, pp, ci)
         optModel.funcRunOptimization()
 
         ## Create results
         resultOpt = Result(param)
-        resultOpt.funcGetResult(optModel, cm, elec, pv, pp, ci)
+        resultOpt.funcGetResult(optModel, cm, elec, pv, wt, pp, ci)
     
 
     ########## Simulation ##########
@@ -167,21 +181,21 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
     if optModel.m.status != GRB.INFEASIBLE and optModel.m.SolCount > 0:
         # Mit gedriftetem Kennfeld -> Wahre Kosten bei Drift, diese Daten werden für die Adaption genutzt
         if bUseDriftCharMap == True:
-            simulation.funcStartSimulation(param, resultOpt, cmDrift, elec, pv, pp, ci)
+            simulation.funcStartSimulation(param, resultOpt, cmDrift, elec, pv, wt, pp, ci)
             resultOpt.funcSaveResult(optModel, "trueDriftCharMap")
 
         # Mit wahrem Kennfeld -> Wahre Kosten, diese Daten werden für die Adaption genutzt
         else:
-            simulation.funcStartSimulation(param, resultOpt, cm, elec, pv, pp, ci)
+            simulation.funcStartSimulation(param, resultOpt, cm, elec, pv, wt, pp, ci)
             resultOpt.funcSaveResult(optModel, "trueCharMap")
 
         # Mit berechnetem Kennfeld -> Berechnete Kosten
         if bUseCalcCharMap == True:
-            simulation.funcStartSimulation(param, resultOpt, cmCalc, elec, pv, pp, ci)
+            simulation.funcStartSimulation(param, resultOpt, cmCalc, elec, pv, wt, pp, ci)
             resultOpt.funcSaveResult(optModel, "calcCharMap")
     
-        resultOpt.funcPrintResult(optModel, cm, elec, pv, pp, ci)
-        resultOpt.funcVisualizationResult(optModel, cm, elec, pv, pp, ci)
+        resultOpt.funcPrintResult(optModel, cm, elec, pv, wt, pp, ci)
+        resultOpt.funcVisualizationResult(optModel, cm, elec, pv, wt, pp, ci)
     
     else:
         resultOpt.funcSaveResult(optModel, "trueCharMap")
@@ -189,13 +203,13 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, pp,
 
     #checkResults.funcStartCheck(param, resultOpt, cm, elec, pv, pp, ci, simulation)
 
-    return resultOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults
+    return resultOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults
 
 
 def main(argWorkflow):
     for j in range(0, 1):
         results = []
-        param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcInitialize(args, j)
+        param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcInitialize(args, j)
 
         useAdaptation = False
         scheduleMoreTimes = True
@@ -209,10 +223,10 @@ def main(argWorkflow):
 
         if scheduleMoreTimes == True:
             for i in range(0, numberOfIterations):           
-                dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)  
+                dataOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults)  
                 results.append(copy.deepcopy(dataOpt.dictResult))      
         else:
-            dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
+            dataOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults)
 
         createGif(results)
 

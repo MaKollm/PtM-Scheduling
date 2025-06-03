@@ -23,13 +23,16 @@ class PowerPrice():
         self.param = param
         if param.param['controlParameters']['useRealForecast'] == True:
             data = self.funcForecastData(numWeeksToConsider=1)
-            self.iStart = 0
-            self.iStop  = self.param.param["controlParameters"]["optimizationHorizon"]
+            self.iStart = self.param.param["controlParameters"]["startTimeIteration"]
+            self.iStop  = self.iStart + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
+            data = data[self.iStart:self.iStop]
             data["prices"] = data["prices"].astype(float) / 1000
             self.arrPowerPriceHourly = data["prices"].to_numpy()
-            self.arrPowerPriceHourly = self.arrPowerPriceHourly[self.iStart:self.iStop]
         else:
             self.funcUpdateCSV(param)
+
+        if len(self.arrPowerPriceHourly) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
+            raise Exception("Error: The start time and the time of the power price forecast or the historical power price data do not match")
 
 
     def funcLoadCSV(self):
@@ -46,7 +49,6 @@ class PowerPrice():
     def funcUpdateCSV(self, param):
         start = self.param.param["controlParameters"]["startTimeIteration"]
         end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
-
 
         index = self.DataFrameEnergyCharts.index
         
@@ -137,11 +139,11 @@ class PowerPrice():
 
 
         #check if today/tomorrow is in data_forecast, if not add the existing prices from data in front of data_forecast
-        if np.datetime64(today) not in data_forecast.index:
-            if np.datetime64(today +timedelta(days=1)) not in data_forecast.index:
+        if np.datetime64(today +timedelta(days=1)) not in data_forecast.index:
+            if np.datetime64(today) not in data_forecast.index:
                 add_time = pd.date_range(start=today,periods=48,freq="h")
                 add_data = data["Day Ahead Price (DE/LU)"][-48:]
-                print(len(add_time),len(add_data))
+                #print(len(add_time),len(add_data))
             else:
                 add_time = pd.date_range(start=(today + timedelta(days=1)),periods=24,freq="h")
                 add_data = data["Day Ahead Price (DE/LU)"][-24:]
@@ -151,7 +153,16 @@ class PowerPrice():
             data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
             data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
         else:
-            data_forecast_total = data_forecast
+            if np.datetime64(today) not in data_forecast.index:
+                add_time = pd.date_range(start=today,periods=24,freq="h")
+                add_data = data["Day Ahead Price (DE/LU)"][-24:]
+                #print(len(add_time),len(add_data))
+                
+                data_forecast_total = pd.DataFrame(index = pd.concat([pd.Series(add_time),pd.Series(data_forecast.index)]))
+                data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
+                data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
+            else:
+                data_forecast_total = data_forecast
 
         return data_forecast_total
     

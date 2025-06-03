@@ -34,17 +34,23 @@ class Param():
             self.powerSale = args[13]
             self.powerPurchase = args[14]
             self.considerPV = args[15]
-            self.considerWind = args[16]
+            self.considerWT = args[16]
             self.considerBattery = args[17]
             self.peakLoadCapping = args[18]
 
 
-            self.strPathCharMapData = args[19]
-            self.strPathCharMapDataCalc = args[20]
-            self.strPathPVData = args[21]
-            self.strPathPPData = args[22]
-            self.strPathInitialData = args[23]
-            self.strPathAdaptationData = args[24]
+            self.use_pvUncertainty = args[19]
+            self.pvUncertainty = args[20]
+            self.use_wtUncertainty = args[21]
+            self.wtUncertainty = args[22]
+
+
+            self.strPathCharMapData = args[23]
+            self.strPathCharMapDataCalc = args[24]
+            self.strPathPVData = args[25]
+            self.strPathPPData = args[26]
+            self.strPathInitialData = args[27]
+            self.strPathAdaptationData = args[28]
         
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
@@ -52,10 +58,9 @@ class Param():
         #self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTimeIteration'] + timedelta(hours=self.param['controlParameters']['numHoursToSimulate'])
 
 
-    def funcUpdate(self, pv, pp, ci, iteration):
+    def funcUpdate(self, pv, wt, pp, ci, iteration):
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
-        self.param['wind']['powerAvailable'] = 0
-        #self.param['wind']['powerAvailable'] = wind.arrPowerAvailable
+        self.param['wt']['powerAvailable'] = wt.arrPowerAvailable
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         self.param['carbonIntensity']['carbonIntensity'] = ci.arrCarbonIntensityHourly
 
@@ -233,8 +238,14 @@ class Param():
         self.param['controlParameters']['powerSale'] = self.powerSale
         self.param['controlParameters']['powerPurchase'] = self.powerPurchase
         self.param['controlParameters']['considerPV'] = self.considerPV
-        self.param['controlParameters']['considerWind'] = self.considerWind
+        self.param['controlParameters']['considerWT'] = self.considerWT
         self.param['controlParameters']['considerBattery'] = self.considerBattery
+
+        self.param['controlParameters']['use_pvUncertainty'] = self.use_pvUncertainty
+        self.param['controlParameters']['pvUncertainty'] = self.pvUncertainty
+        self.param['controlParameters']['use_wtUncertainty'] = self.use_wtUncertainty
+        self.param['controlParameters']['wtUncertainty'] = self.wtUncertainty
+        
         self.param['controlParameters']['peakLoadCapping'] = self.peakLoadCapping
         self.param['controlParameters']['pathCharMapData'] = self.strPathCharMapData
         self.param['controlParameters']['pathCharMapDataCalc'] = self.strPathCharMapDataCalc
@@ -364,18 +375,26 @@ class Param():
         self.param['pv']['covariance'] = 8
         self.param["pv"]["strPvLat"] = "49.09"
         self.param["pv"]["strPvLon"] = "8.44"
+        self.param["pv"]["covScalarPowerOutput"] = 1e+04
+        self.param["pv"]["covWeatherData"] = {'poa_global':100, 'poa_direct':100, 'poa_diffuse':100, 'temp_air':100, 'wind_speed':100}
+        self.param["pv"]["startDateToCalcUncertainty"] = pd.Timestamp("2024-01-01")
+        self.param["pv"]["stopDateToCalcUncertainty"] = pd.Timestamp("2025-04-30")
 
 
 
-        ## Wind
-        self.param['wind'] = {}
-        self.param['wind']['powerOfModule'] = 0.22
-        self.param['wind']['powerOfSystem'] = 200
-        self.param['wind']['numberOfUncertaintySamples'] = 100
-        self.param['wind']['alpha'] = 0.9
-        self.param['wind']['covariance'] = 8
-        self.param["wind"]["strWindLat"] = "49.09"
-        self.param["wind"]["strWindLon"] = "8.44"
+
+        ## Wind turbine
+        self.param["wt"] = {}
+        self.param["wt"]["strWtLat"] = "49.09"
+        self.param["wt"]["strWtLon"] = "8.44"
+        self.param["wt"]["roughnessLength"] = 2 #find true value for actual coordinates
+        self.param["wt"]["turbineType"] = "E-126/4200" #as in oedb turbine library
+        self.param["wt"]["hubHeight"] = 135 #in m
+        self.param['wt']['numberOfUncertaintySamples'] = 100
+        self.param["wt"]["covScalarPowerOutput"] = 1e+10
+        self.param["wt"]["covWeatherData"] = {"wind_speed": {"80":1 , "120":1 , "180":1}, "wind_direction": {"80": 1 , "120": 1 , "180": 1}, "temperature": {"80":1 , "120": 1, "180":1}}
+        self.param["wt"]["startDateToCalcUncertainty"] = pd.Timestamp("2024-01-01")
+        self.param["wt"]["stopDateToCalcUncertainty"] = pd.Timestamp("2025-04-30")
 
 
 
