@@ -21,6 +21,8 @@ class Param():
 		#new pv parameters
 		self.param["pv"]["strPvLat"] = "49.09"
 		self.param["pv"]["strPvLon"] = "8.44"
+		self.param["pv"]["covScalarPowerOutput"] = 1e+04
+		self.param["pv"]["covWeatherData"] = {'poa_global':100, 'poa_direct':100, 'poa_diffuse':100, 'temp_air':100, 'wind_speed':100}
 
 		#controlParameters
 		self.param["controlParameters"] = {}
@@ -31,7 +33,11 @@ class Param():
 		
 
 		#newControlParameters
-		self.param["controlParameters"]["start_time"] = pd.Timestamp("2023-01-10 12:20")#start time for simulation (next higher array entry is used)
+		self.param["controlParameters"]["start_time"] = pd.Timestamp("2025-06-04 12:20")#start time for simulation (next higher array entry is used)
+		
+		self.param["controlParameters"]["startDateToCalcUncertainty"] = pd.Timestamp("2024-01-01")
+		self.param["controlParameters"]["stopDateToCalcUncertainty"] = pd.Timestamp("2025-04-30")
+		self.param['controlParameters']['considerWT'] = True
 
 		#excludedControlParameters
 		self.param["controlParameters"]["numberOfTimeSteps"] = 24*7
@@ -40,4 +46,19 @@ class Param():
 		#Prices
 		self.param["prices"] = {}
 		self.param['prices']['numberOfUncertaintySamples'] = 100
+
+		#wt parameters
+		self.param["wt"] = {}
+		self.param["wt"]["strWtLat"] = "49.09"
+		self.param["wt"]["strWtLon"] = "8.44"
+		self.param["wt"]["roughnessLength"] = 2 #find true value for actual coordinates
+		self.param["wt"]["turbineType"] = "E-126/4200" #as in oedb turbine library
+		self.param["wt"]["hubHeight"] = 135 #in m
+		self.param['wt']['numberOfUncertaintySamples'] = 100
+		self.param["wt"]["covScalarPowerOutput"] = 1e+10
+		self.param["wt"]["covWeatherData"] = {"wind_speed": {"80":1 , "120":1 , "180":1}, "wind_direction": {"80": 1 , "120": 1 , "180": 1}, "temperature": {"80":1 , "120": 1, "180":1}}
+
+		#pp parameters
+		self.param["pp"] = {}
+		self.param["pp"]["covScalarPowerPrice"] = 1e+08
 

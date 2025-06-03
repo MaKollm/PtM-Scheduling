@@ -18,6 +18,9 @@ import openmeteo_requests
 import requests_cache
 import pandas as pd
 from retry_requests import retry
+from scipy.optimize import curve_fit
+import warnings
+
 
 
 ########################
@@ -31,21 +34,41 @@ from retry_requests import retry
 
 class PV():
     def __init__(self, param):
-        self.param = param
-        self.strModule = self.param.param['pv']['module']
-        self.strInverter = self.param.param['pv']['inverter']
-        self.strPvLat = self.param.param["pv"]["strPvLat"]
-        self.strPvLon = self.param.param["pv"]["strPvLon"]
-        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
-        self.fAlpha = self.param.param['pv']['alpha']
-        self.fCovValue = self.param.param['pv']['covariance']
+        self.strModule = param.param['pv']['module']
+        self.strInverter = param.param['pv']['inverter']
+        self.strPvLat = param.param["pv"]["strPvLat"]
+        self.strPvLon = param.param["pv"]["strPvLon"]
+        self.iNumberUncertaintySamples = param.param['pv']['numberOfUncertaintySamples']
+        self.fAlpha = param.param['pv']['alpha']
+        self.fCovValue = param.param['pv']['covariance']
+        self.pathPVData = param.param['controlParameters']['pathPVData']
+        self.powerOfSystem = param.param['pv']['powerOfSystem']
+        self.powerOfModule = param.param['pv']['powerOfModule']
+        self.covScalarPowerOutput = param.param["pv"]["covScalarPowerOutput"]
+        self.covWeatherData = param.param["pv"]["covWeatherData"]
+
+        self.start_time =param.param["controlParameters"]["start_time"]
+        self.numHoursToSimulate = param.param["controlParameters"]["numHoursToSimulate"]
+        self.considerPV = param.param['controlParameters']['considerPV']
+        self.startDateToCalcUncertainty = param.param["controlParameters"]["startDateToCalcUncertainty"]
+        self.stopDateToCalcUncertainty = param.param["controlParameters"]["stopDateToCalcUncertainty"]
+
+        self.online_weather_data = None
+        self.online_weather_data_noisy = None
+        self.csv_weather_data = None
+
+
+
+    #update parameters of PV
+    def funcUpdate(self,param):
+        self.__init__(param)
 
 
 
     def funcLoadCSV(self):
         # Weather
-        global_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + r"pvgis_global_2023.csv", skiprows=10, nrows = 8751,index_col=0)
-        components_data = pd.read_csv(self.param.param['controlParameters']['pathPVData'] + r"pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+        global_data = pd.read_csv(self.pathPVData + r"pvgis_global_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+        components_data = pd.read_csv(self.pathPVData + r"pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
     
 
         poa_data = pd.DataFrame(columns=[
@@ -59,8 +82,7 @@ class PV():
         poa_data['temp_air'] = components_data['T2m']
         poa_data['wind_speed'] = components_data['WS10m']
         poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
-        self.csv_poa_data = poa_data
-
+        self.csv_weather_data = poa_data
 
 
 
@@ -108,7 +130,7 @@ class PV():
         #print(hourly_data)
 
         #order important
-        hourly_data["poa_global"] = hourly_global_tilted_irradiance_instant
+        hourly_data["poa_global"] = hourly_global_tilted_irradiance_instant 
         hourly_data["poa_direct"] = hourly_direct_normal_irradiance_instant
         hourly_data["poa_diffuse"] = hourly_diffuse_radiation_instant
         hourly_data["temp_air"] = hourly_temperature_2m
@@ -116,10 +138,10 @@ class PV():
 
         hourly_dataframe = pd.DataFrame(data = hourly_data)
         hourly_dataframe = hourly_dataframe.set_index("date")
-        self.online_poa_data = hourly_dataframe
+        self.online_weather_data = hourly_dataframe
 
 
-    def funcCreatePowerData(self, use_csv = False):
+    def funcCreatePowerData(self, weatherKey = "online"):
 
         # PV
         location = Location(latitude = float(self.strPvLat), longitude = float(self.strPvLon),tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
@@ -139,68 +161,186 @@ class PV():
         
         modelChain = ModelChain(system, location)
 
-        if use_csv == True:
-            modelChain.run_model_from_poa(self.csv_poa_data)
-
-        else:
-            modelChain.run_model_from_poa(self.online_poa_data)
+        weather_dict = {"online" : self.online_weather_data, "online_noisy" : self.online_weather_data_noisy, "csv": self.csv_weather_data}
+        modelChain.run_model_from_poa(weather_dict[weatherKey])
 
 
-        pvData_Series = modelChain.results.ac
-        self.dataRaw = pvData_Series.to_numpy()
-        self.pvdata = []
+
+       
+        self.dataRaw = modelChain.results.ac
         for i in range(0, len(self.dataRaw)):
-            if float(self.dataRaw[i]) < 0.0:
-                self.dataRaw[i] = 0.0
+            if float(self.dataRaw.iloc[i]) < 0.0:
+                self.dataRaw.iloc[i] = 0.0
 
-            self.pvdata.append(self.dataRaw[i] * self.param.param['pv']['powerOfSystem'] / self.param.param['pv']['powerOfModule'] / 1000)
+        self.powerOutput = self.dataRaw.copy(deep=True) * self.powerOfSystem  / self.powerOfModule / 1000
 
-    def funcUpdate(self, param, iteration = 1):
-        self.param = param
 
+    #cuts out specific interval from self.powerOutput and saves it as np.array in self.arrPowerAvaiable
+    def funcCutout(self, iteration = 1):
         #timestamps are saved in param
-        start = self.param.param["controlParameters"]["start_time"] + pd.Timedelta(hours = self.param.param["controlParameters"]["numHoursToSimulate"])*(iteration-1)
-        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["numHoursToSimulate"]) * iteration
+        start = self.start_time + pd.Timedelta(hours = self.numHoursToSimulate)*(iteration-1)
+        end = start + pd.Timedelta(hours = self.numHoursToSimulate) * iteration
 
-
-        index = self.csv_poa_data.index
-        
-        self.iStart = index.searchsorted(start)
-        self.iStop  = index.searchsorted(end, side="right")
-
-        if param.param["controlParameters"]["considerPV"] == True:
-            self.arrPowerAvailable = self.pvdata[self.iStart:self.iStop]
+        if self.considerPV == True:
+            self.arrPowerAvaiable = self.powerOutput[start:end].to_numpy()
 
         else:
-            self.arrPowerAvailable = np.zeros(self.iStop-self.iStart)
-
-        self.funcAddUncertainty()
-        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
-        self.fAlpha = self.param.param['pv']['alpha']
-        self.iCovValue = self.param.param['pv']['covariance']
+            self.arrPowerAvaiable = np.zeros(len(self.powerOutput))
 
 
-    def funcAddUncertainty(self):
-        arrCov = np.zeros((len(self.arrPowerAvailable),len(self.arrPowerAvailable)))
-        arrMean = np.zeros(arrCov.shape[0])
+    def funcAddNoisePowerOutput(self):
+        l = len(self.powerOutput)
+        cov = np.zeros((l,l))
+        for i in range(l):
+            cov[i][i] = self.covScalarPowerOutput
 
-        for i in range(0,arrCov.shape[0]):
-            arrCov[i][i] = 1 + i*(self.fCovValue)
-            arrMean[i] = self.arrPowerAvailable[i]
-
-        np.random.seed(1)
-        arrPvSamples = np.random.multivariate_normal(arrMean,arrCov,self.iNumberUncertaintySamples)
-        for i in range(0,arrCov.shape[0]):
-            if self.arrPowerAvailable[i] == 0:
-                for j in range(0,self.iNumberUncertaintySamples):
-                    arrPvSamples[j][i] = 0
-            
-        for i in range(0,arrCov.shape[0]):
-            for j in range(0,self.iNumberUncertaintySamples):
-                if arrPvSamples[j][i] <= 0:
-                    arrPvSamples[j][i] = 0
-
-        self.arrPvSamples = arrPvSamples
+        samples = np.random.multivariate_normal(self.powerOutput.to_numpy(), cov, size=1)
+        self.powerOutputNoisy = (self.powerOutput.copy(deep=True)*0 + samples[0]).rename("Power + Noise [MW]")
+        #fix negative values
+        mask = self.powerOutputNoisy <0
+        self.powerOutputNoisy[mask]  =0
 
 
- 
+    #add normal distributed noise to each of the weather data columns
+    def funcAddNoiseWeather(self, useSigmaFrame = False):
+        weather = self.online_weather_data.copy(deep=True)
+
+        if useSigmaFrame == False:
+            #iterate through all columns and sub columns
+            for key in self.covWeatherData:
+                series = weather[key]
+                l = len(series)
+                cov = np.zeros((l,l))
+                for i in range(l):
+                    cov[i][i] = self.covWeatherData[key]
+
+                samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
+                weather.loc[:,key] = samples[0].astype(np.float32)
+
+        else:
+            for key in ['poa_global', 'poa_direct', 'poa_diffuse', 'temp_air', 'wind_speed']:
+                    sigma = self.online_weather_data.loc[:,"sigma_"+key].to_numpy()[0]
+                    series = weather[key]
+                    cov = np.identity(len(series)) *sigma
+                    samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
+                    weather.loc[:,key] = samples[0].astype(np.float32)
+
+
+        self.online_weather_data_noisy = weather
+        #fix negative values
+        mask = self.online_weather_data_noisy < 0 
+        self.online_weather_data_noisy[mask] = 0
+
+
+
+
+    def funcCalcUncertaintyWeather(self, plot = False, correctWeather = True):
+
+        #get archived forecast data
+        cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
+        retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
+        openmeteo = openmeteo_requests.Client(session = retry_session)
+
+        url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+        specs = {
+            "latitude": float(self.strPvLat),
+            "longitude": float(self.strPvLon),
+            "start_date": self.startDateToCalcUncertainty.strftime("%Y-%m-%d"),
+            "end_date": self.stopDateToCalcUncertainty.strftime("%Y-%m-%d"),
+            "hourly": ["temperature_2m", "wind_speed_10m", "global_tilted_irradiance_instant", "direct_normal_irradiance_instant", "diffuse_radiation_instant"],
+            "timezone": "Europe/Berlin"
+        }
+
+        responses = openmeteo.weather_api(url, params=specs)
+
+        #hopurly data to numpy
+        response = responses[0]
+        hourly = response.Hourly()
+        hourly_temperature_2m_hist_forecast = hourly.Variables(0).ValuesAsNumpy()
+        hourly_wind_speed_10m_hist_forecast = hourly.Variables(1).ValuesAsNumpy()
+        hourly_global_tilted_irradiance_instant_hist_forecast = hourly.Variables(2).ValuesAsNumpy()
+        hourly_direct_normal_irradiance_instant_hist_forecast = hourly.Variables(3).ValuesAsNumpy()
+        hourly_diffuse_radiation_instant_hist_forecast = hourly.Variables(4).ValuesAsNumpy()
+        
+
+        #get historical data - specs are the same
+        url = "https://archive-api.open-meteo.com/v1/archive"
+
+        responses = openmeteo.weather_api(url, params=specs)
+
+        #hourly data to numpy
+        response = responses[0]
+        hourly = response.Hourly()
+        hourly_temperature_2m_hist = hourly.Variables(0).ValuesAsNumpy()
+        hourly_wind_speed_10m_hist = hourly.Variables(1).ValuesAsNumpy()
+        hourly_global_tilted_irradiance_instant_hist = hourly.Variables(2).ValuesAsNumpy()
+        hourly_direct_normal_irradiance_instant_hist = hourly.Variables(3).ValuesAsNumpy()
+        hourly_diffuse_radiation_instant_hist = hourly.Variables(4).ValuesAsNumpy()
+
+
+        temp_diff = hourly_temperature_2m_hist_forecast - hourly_temperature_2m_hist
+        wind_speed_diff = hourly_wind_speed_10m_hist_forecast - hourly_wind_speed_10m_hist
+        gti_diff = hourly_global_tilted_irradiance_instant_hist_forecast - hourly_global_tilted_irradiance_instant_hist
+        dni_diff= hourly_direct_normal_irradiance_instant_hist_forecast - hourly_direct_normal_irradiance_instant_hist
+        dri_diff = hourly_diffuse_radiation_instant_hist_forecast - hourly_diffuse_radiation_instant_hist
+
+
+        #gauss fit the difference histograms - get mu and sigma for each array - plot the curves if plot = True
+        nbins = 70  #try different number of bins if fit does not work
+        array_fit_parameters = []
+
+        if plot:
+            fig,axs = plt.subplots(nrows=1,ncols=5,figsize=(4.7*2,5))
+
+        def gauss_function(x, A,mu, sigma):
+                return A * np.exp(-(x - mu)**2 / (2 * sigma**2))
+
+        def curve_fit_adv(array,nbins):
+                ydata, bins  = np.histogram(array,bins=nbins)
+                xdata = bins[0:nbins] + 0.5 * (bins[1]-bins[0]) #mitte der bins
+                popt, pcov,infodict, mesg, ier = curve_fit(gauss_function, xdata, ydata,full_output=True)
+                if ier != 1:
+                    popt, pcov, xdata, ydata = curve_fit_adv(array,nbins+1)
+                return popt, pcov, xdata, ydata
+        
+        for i,array in enumerate([gti_diff,dni_diff,dri_diff,temp_diff,wind_speed_diff]):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                popt, pcov, xdata, ydata = curve_fit_adv(array,nbins)
+            popt[2] = abs(popt[2])
+            array_fit_parameters.append([popt[1],popt[2]])
+           
+
+            if plot: #show fit_curves if plot = True
+                axs[i].plot(xdata,ydata, label ="data")
+                axs[i].plot(xdata, gauss_function(xdata,*popt), label = r"$\mu = {:.3f},\sigma = {:.3f}$".format(popt[1],popt[2]))
+                axs[i].legend()
+        
+        if plot:
+            axs[0].set_title("temp")
+            axs[1].set_title("wind_speed")
+            axs[2].set_title("GTI")
+            axs[3].set_title("DNI")
+            axs[4].set_title("DRI")
+            fig.suptitle("Gauss fitted difference of forecast and historical data "+self.startDateToCalcUncertainty.strftime("%d.%m.%Y")+"-" +self.stopDateToCalcUncertainty.strftime("%d.%m.%Y"))
+            plt.legend()
+            plt.show()
+
+
+        array_fit_parameters = np.array(array_fit_parameters)
+
+        
+        #use array_fit_parameters (mu) to correct the weather data with the most common deviation
+        if correctWeather == True:
+            for i, key in enumerate(self.online_weather_data.columns.to_numpy()):
+                self.online_weather_data.loc[:,key] = self.online_weather_data.loc[:,key] - array_fit_parameters[i][0]
+            #fix negative values
+            mask = self.online_weather_data < 0 
+            self.online_weather_data[mask] = 0
+
+
+        for i, key in enumerate(self.online_weather_data.columns.to_numpy()):
+            self.online_weather_data.loc[:,"mu_"+key] =  array_fit_parameters[i][0]
+            self.online_weather_data.loc[:,"sigma_"+key] = array_fit_parameters[i][1]
+
+

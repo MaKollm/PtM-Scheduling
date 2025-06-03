@@ -19,11 +19,17 @@ import requests
 class PowerPrice():
 
     def __init__(self, param):
-        self.param = param
+        self.pathPPData  = param.param['controlParameters']['pathPPData']
+        self.start_time = param.param["controlParameters"]["start_time"]
+        self.numHoursToSimulate = param.param["controlParameters"]["numHoursToSimulate"]
+        self.covScalarPowerPrice = param.param["pp"]["covScalarPowerPrice"]
+
+    def funcUpdate(self,param):
+        self.__init__(param)
 
 
     def funcLoadCSV(self):
-        self.DataFrameEnergyCharts = pd.read_csv(self.param.param['controlParameters']['pathPPData'] + r"energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2023.csv",dtype = str,skiprows = [1])
+        self.DataFrameEnergyCharts = pd.read_csv(self.pathPPData + r"energy-charts_Stromproduktion_und_Börsenstrompreise_in_Deutschland_2023.csv",dtype = str,skiprows = [1])
         self.DataFrameEnergyCharts = self.DataFrameEnergyCharts.set_index("Datum (MEZ)", drop = True)
         self.DataFrameEnergyCharts.index = pd.to_datetime(self.DataFrameEnergyCharts.index, utc=True).tz_convert("Europe/Berlin").tz_localize(None)
         self.DataFrameEnergyCharts = self.DataFrameEnergyCharts[["Day Ahead Auktion (DE-LU)"]]
@@ -45,7 +51,7 @@ class PowerPrice():
         for i in range(len(dataset)):
             try:
                 if dataset[i]["name"][0]["en"] == "Day Ahead Auction (DE-LU)":
-                    print("Day Ahead Auction has index ",i)
+                    #print("Day Ahead Auction has index ",i)
                     break
             except:
                 1==1
@@ -113,11 +119,11 @@ class PowerPrice():
 
 
         #check if today/tomorrow is in data_forecast, if not add the existing prices from data in front of data_forecast
-        if np.datetime64(today) not in data_forecast.index:
-            if np.datetime64(today +timedelta(days=1)) not in data_forecast.index:
+        if np.datetime64(today +timedelta(days=1)) not in data_forecast.index:
+            if np.datetime64(today) not in data_forecast.index:
                 add_time = pd.date_range(start=today,periods=48,freq="h")
                 add_data = data["Day Ahead Price (DE/LU)"][-48:]
-                print(len(add_time),len(add_data))
+                #print(len(add_time),len(add_data))
             else:
                 add_time = pd.date_range(start=(today + timedelta(days=1)),periods=24,freq="h")
                 add_data = data["Day Ahead Price (DE/LU)"][-24:]
@@ -127,15 +133,23 @@ class PowerPrice():
             data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
             data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
         else:
-            data_forecast_total = data_forecast
+            if np.datetime64(today) not in data_forecast.index:
+                add_time = pd.date_range(start=today,periods=24,freq="h")
+                add_data = data["Day Ahead Price (DE/LU)"][-24:]
+                #print(len(add_time),len(add_data))
+                
+                data_forecast_total = pd.DataFrame(index = pd.concat([pd.Series(add_time),pd.Series(data_forecast.index)]))
+                data_forecast_total["prices"] = pd.concat([add_data,data_forecast["prices"]])
+                data_forecast_total["prices_std"] = pd.concat([add_data*0,data_forecast["prices_std"]]) #add_data has right dimension and std of these values is zero
+            else:
+                data_forecast_total = data_forecast
 
         return data_forecast_total
 
     #trims arrPowerPriceHourlyAll to depending on start_time and numHoursToSimulate, saves trimmed array as arrPowerPriceHourly
-    def funcUpdateCSV(self, param, iteration = 1):
-        self.param = param
-        start = self.param.param["controlParameters"]["start_time"] + pd.Timedelta(hours = self.param.param["controlParameters"]["numHoursToSimulate"])*(iteration-1)
-        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["numHoursToSimulate"]) * iteration
+    def funcCutout(self, iteration = 1):
+        start = self.start_time + pd.Timedelta(hours = self.numHoursToSimulate)*(iteration-1)
+        end = start + pd.Timedelta(hours = self.numHoursToSimulate) * iteration
 
         index = self.DataFrameEnergyCharts.index
         
@@ -145,34 +159,15 @@ class PowerPrice():
         self.arrPowerPriceHourly = self.arrPowerPriceHourlyAll[self.iStart:self.iStop]
 
 
-    #redefine to make uncertainty related to last weeks?
-    #same as realData
-    def funcAddUncertainty(self):
-        arrCov = np.zeros((len(self.arrPowerPriceHourly),len(self.arrPowerPriceHourly)))
-        arrMean = np.zeros(arrCov.shape[0])
 
-        arrCovValues = [0,2,4,6,8,10,12]
-        #arrCovValues = [0,2*10,4*10,6*10,8*10,10*10,12*10]        
-        arrCovValues = [i * 0.0001 for i in arrCovValues]
-        iCounter = 0
+    #how to do this?
+"""    def funcAddUncertainty(self):
+        l = len(self.powerOutput)
+        cov = np.zeros((l,l))
+        for i in range(l):
+            cov[i][i] = self.covScalarPowerOutput
 
-        for i in range(0,arrCov.shape[0]-1,int(24/self.param.param['controlParameters']['timeStep'])):
-            for j in range(i,i+int(24/self.param.param['controlParameters']['timeStep'])):
-                arrCov[j][j] = arrCovValues[iCounter]
-            
-            iCounter = iCounter + 1
-
-        for i in range(0,arrCov.shape[0]):
-            arrMean[i] = self.arrPowerPriceHourly[i]
-
-        np.random.seed(1)
-        self.arrPowerPriceSamples = np.random.multivariate_normal(arrMean,arrCov, self.iNumberUncertaintySamples)
-
-        for i in range(0,arrCov.shape[0]):
-            for j in range(0, self.iNumberUncertaintySamples):
-                if self.arrPowerPriceSamples[j][i] <= 0:
-                    self.arrPowerPriceSamples[j][i] = 0
-
-                self.arrPowerPriceSamples[j][0] = 0
+        samples = np.random.multivariate_normal(self.powerOutput.to_numpy(), cov, size=1)
+        self.powerOutputNoisy = (self.powerOutput.copy(deep=True)*0 + samples[0]).rename("Power + Noise [MW]")"""
 
 
