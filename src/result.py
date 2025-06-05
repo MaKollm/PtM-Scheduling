@@ -182,12 +182,22 @@ class Result():
             self.dictResult['input']['usageOfPV'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarUsageOfPV)
             for i in self.arrTime:
-                self.dictResult['input']['usageOfPV'].append(solution[i])   
-            
+                self.dictResult['input']['usageOfPV'].append(solution[i])
+
+            self.dictResult['input']['usageOfWind'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarUsageOfWind)
+            for i in self.arrTime:
+                self.dictResult['input']['usageOfWind'].append(solution[i])
+
             self.dictResult['input']['powerInBatteryPV'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarPowerInBatteryPV)
             for i in self.arrTime:
                self.dictResult['input']['powerInBatteryPV'].append(solution[i])
+
+            self.dictResult['input']['powerInBatteryWind'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarPowerInBatteryWind)
+            for i in self.arrTime:
+                self.dictResult['input']['powerInBatteryWind'].append(solution[i])
 
             self.dictResult['input']['powerInBatteryBought'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarPowerInBatteryBought)
@@ -229,12 +239,22 @@ class Result():
             solution = optModel.m.getAttr('X', optModel.OptVarIndicatorBatteryDischarging2)
             for i in self.arrTime:
                 self.dictResult['input']['indicatorBatteryDischarging2'].append(solution[i])
-            
-            
+
+            self.dictResult['input']['indicatorBatteryCharging3'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarIndicatorBatteryCharging3)
+            for i in self.arrTime:
+                self.dictResult['input']['indicatorBatteryCharging3'].append(solution[i])
+
+
             self.dictResult['input']['actualPowerInBatteryPV'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarActualPowerInBatteryPV)
             for i in self.arrTime:
-                self.dictResult['input']['actualPowerInBatteryPV'].append(solution[i]) 
+                self.dictResult['input']['actualPowerInBatteryPV'].append(solution[i])
+
+            self.dictResult['input']['actualPowerInBatteryWind'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarActualPowerInBatteryWind)
+            for i in self.arrTime:
+                self.dictResult['input']['actualPowerInBatteryWind'].append(solution[i])
 
             self.dictResult['input']['actualPowerInBatteryBought'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarActualPowerInBatteryBought)

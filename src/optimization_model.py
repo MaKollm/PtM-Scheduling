@@ -534,7 +534,7 @@ class Optimization_Model:
 
 
         ## PV considered
-        if self.param.param['controlParameters']['considerPV'] == False:
+        if not self.param.param['controlParameters']['considerPV']:
             self.m.addConstrs(
                 self.OptVarUsageOfPV[t] == 0 for t in self.arrTime)
             #self.m.addConstrs(
@@ -542,13 +542,13 @@ class Optimization_Model:
 
         
         ## Wind considered
-        if self.param.param['controlParameters']['considerWind'] == False:
+        if not self.param.param['controlParameters']['considerWind']:
             self.m.addConstrs(
                 self.OptVarUsageOfWind[t] == 0 for t in self.arrTime)
 
 
         ## Battery considered
-        if self.param.param['controlParameters']['considerBattery'] == False:
+        if not self.param.param['controlParameters']['considerBattery']:
             self.m.addConstrs(
                 self.OptVarActualPowerInBatteryPV[t] == 0 for t in self.arrTime)
             self.m.addConstrs(
@@ -660,15 +660,15 @@ class Optimization_Model:
 
         
         # Power cannot be sold
-        if self.param.param['controlParameters']['powerSale'] == False:
+        if not self.param.param['controlParameters']['powerSale']:
             self.m.addConstrs(
                 (self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime[1:]), "No power can be sold")
         # Power cannot be bought
-        if self.param.param['controlParameters']['powerPurchase'] == False:
+        if not self.param.param['controlParameters']['powerPurchase']:
             self.m.addConstrs(
                 (self.OptVarPowerBought[t] == 0 for t in self.arrTime[1:]), "Power can not be bought")
         # Peak load capping
-        if self.param.param['controlParameters']['peakLoadCapping'] == True:
+        if self.param.param['controlParameters']['peakLoadCapping']:
             self.m.addConstrs(
                 (self.OptVarPowerBought[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime[1:]), "Peak load capping")
             
@@ -709,7 +709,6 @@ class Optimization_Model:
 
 
         ## Initial time step constraints
-
         # No operation point for Synthesis in initial time step
         self.m.addConstr(
             (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
@@ -733,14 +732,16 @@ class Optimization_Model:
             (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
 
         # No input or output for battery in first time step
-        self.m.addConstr(
-            (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
-        self.m.addConstr(
-            (self.OptVarActualPowerInBatteryBought[0] == 0), "Power bought battery initial time step")
-        self.m.addConstr(
-            (self.OptVarActualPowerOutBattery[0] == 0), "power out battery initial time step")
-        self.m.addConstr(
-            (self.OptVarActualPowerOutBatterySold[0] == 0), "power sold battery initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
+        #self.m.addConstr(
+            #    (self.OptVarActualPowerInBatteryWind[0] == 0), "PV in battery initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarActualPowerInBatteryBought[0] == 0), "Power bought battery initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarActualPowerOutBattery[0] == 0), "power out battery initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarActualPowerOutBatterySold[0] == 0), "power sold battery initial time step")
 
 
         ## Electrolyser constraints
@@ -856,6 +857,7 @@ class Optimization_Model:
 
             # Calculate intermediate expressions
             battery_in = battery_in + (self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency']
+                                    + self.OptVarActualPowerInBatteryWind[t] * self.param.param['battery']['efficiency']
                                     + self.OptVarActualPowerInBatteryBought[t] * self.param.param['battery']['efficiency'])
             
             battery_out = battery_out + (self.OptVarActualPowerOutBattery[t]

@@ -143,6 +143,7 @@ class Simulation:
 
             self.dictOutput_Scheduling['batteryCharge'].append((self.param.param['battery']['initialCharge'] 
                 + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryPV'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])
+                + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryWind'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])
                 + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryBought'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])  
                 - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBattery'][l] for l in self.arrTime[0:i+1])
                 - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBatterySold'][l] for l in self.arrTime[0:i+1])))
@@ -200,9 +201,7 @@ class Simulation:
         self.dictCosts['methanol'] = -np.sum(np.array(self.dictOutput_Scheduling['massFlowMethanolOut']) * self.param.param['prices']['methanol'])
         self.dictCosts['powerBought'] = np.sum(np.dot(self.param.param['prices']['power'], resultOpt.dictResult['input']['powerBought']))
         self.dictCosts['carbonIntensity'] = np.sum(np.dot(self.param.param['carbonIntensity']['carbonIntensity'], resultOpt.dictResult['input']['powerBought']))
-        self.dictCosts['powerBatterySold'] = 0.0
-        for i in self.arrTime: 
-            self.dictCosts['powerBatterySold'] = self.dictCosts['powerBatterySold'] - self.param.param['prices']['powerSold']*resultOpt.dictResult['input']['actualPowerOutBatterySold'][i]
+        self.dictCosts['powerBatterySold'] = -np.sum(self.param.param['prices']['powerSold']*resultOpt.dictResult['input']['actualPowerOutBatterySold'])
         
         self.dictCosts['all'] = sum(self.dictCosts.values())
 

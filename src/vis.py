@@ -193,6 +193,14 @@ def visu(result):
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
 
+        plt.figure(6)
+        # PV
+        plt.plot(result['input']['usageOfWind'])
+        plt.plot(result['param']['wt']['powerAvailable'])
+        plt.title('Wind')
+        plt.xlabel('time in h')
+        plt.ylabel('power in kW')
+
 
 
         # Power
