@@ -1,11 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import requests
 from scipy.optimize import curve_fit
 
 from windpowerlib import ModelChain, WindTurbine, create_power_curve
-from windpowerlib import data as wt
 
 import openmeteo_requests
 import requests_cache
@@ -13,50 +11,68 @@ from retry_requests import retry
 import warnings
 
 
-class WT():
+class WT:
 
 	def __init__(self,param):
-		self.strWtLat = param.param["wt"]["strWtLat"]
-		self.strWtLon = param.param["wt"]["strWtLon"]
+		self.param = param
 		self.roughnessLength = param.param["wt"]["roughnessLength"]
 		self.turbineType = param.param["wt"]["turbineType"]
 		self.hubHeight = param.param["wt"]["hubHeight"]
+		self.powerOfSystem = param.param['wt']['powerOfSystem']
+		self.powerOfModule = param.param['wt']['powerOfTurbine']
+		self.strWTLat = param.param["wt"]["strWTLat"]
+		self.strWTLon = param.param["wt"]["strWTLon"]
+
 		self.numberOfUncertaintySamples = param.param["wt"]["numberOfUncertaintySamples"]
+		self.pathWTData = param.param['controlParameters']['pathWTData']
 		self.covScalarPowerOutput = param.param["wt"]["covScalarPowerOutput"]
 		self.covWeatherData = param.param["wt"]["covWeatherData"]
-		self.startDateToCalcUncertainty = param.param["controlParameters"]["startDateToCalcUncertainty"]
-		self.stopDateToCalcUncertainty = param.param["controlParameters"]["stopDateToCalcUncertainty"]
+
+		self.startDateToCalcUncertainty = param.param["wt"]["startDateToCalcUncertainty"]
+		self.stopDateToCalcUncertainty = param.param["wt"]["stopDateToCalcUncertainty"]
 
 
 		self.online_weather_data = None
-		self.online_weather_data_noisy = None
+		self.weather_data_noisy = None
 		self.csv_weather_data = None
+		self.weather_data = None
 
 		self.funcLoadCSV()
 
 
-	def funcUpdate(self,param):
+	def funcUpdate(self, param, iteration):
 		self.param = param
 
 		self.funcGetOnlineData()
-		self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_wtUncertainty=self.param.param['controlParameters']['use_wtUncertainty'])
+
+		# choose weather data
+		if self.param.param['controlParameters']['useRealForecast']:
+			self.weather_data = self.online_weather_data
+		else:
+			self.weather_data = self.csv_weather_data
 
 		# calculate uncertainties
-		if param.param["controlParameters"]["use_wtUncertainty"] == True:
-			if param.param["controlParameters"]["wtUncertainty"] == "power_noise":
-				self.funcAddNoisePowerOutput()
-			elif param.param["controlParameters"]["wtUncertainty"] == "weather_noise":
-				self.funcAddNoiseWeather(useSigmaFrame = False)
+		if param.param["controlParameters"]["use_wtUncertainty"]:
+			self.funcCalcUncertaintyWeather(plot=False, correctWeather=False)
+			if param.param["controlParameters"]["wtUncertainty"] == "weather_noise":
+				self.funcAddNoiseWeather(useSigmaFrame=False)
+				self.weather_data = self.weather_data_noisy
 			elif param.param["controlParameters"]["wtUncertainty"] == "weather_forecast":
-				self.funcCalcUncertaintyWeather(plot = False, correctWeather = True)
+				self.funcAddNoiseWeather(useSigmaFrame=True)
+				self.weather_data = self.weather_data_noisy
+
+		self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_wtUncertainty=self.param.param['controlParameters']['use_wtUncertainty'])
+
+		if param.param["controlParameters"]["use_wtUncertainty"] and param.param["controlParameters"]["wtUncertainty"] == "power_noise":
+			self.funcAddNoisePowerOutput()
+			self.powerOutput = self.powerOutputNoisy
 
 		# timestamps are saved in param
 		start = self.param.param["controlParameters"]["startTimeIteration"]
 		end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
 
-		if param.param["controlParameters"]["considerWT"] == True:
+		if param.param["controlParameters"]["considerWT"]:
 			self.arrPowerAvailable = self.powerOutput[start:end].to_numpy()
-
 		else:
 			self.arrPowerAvailable = np.zeros(len(self.powerOutput))
 
@@ -68,17 +84,21 @@ class WT():
 
 	def funcLoadCSV(self):
 		# Weather
-		components_data = pd.read_csv(self.pathPVData + r"pvgis_components_2023.csv", skiprows=10, nrows = 8751,index_col=0)
+		weather_data = pd.read_csv(self.param.param['controlParameters']['pathWTData'] + r"\open-meteo-49.10N8.45E125m.csv", skiprows=3,index_col=0)
 
-		poa_data = pd.DataFrame(columns= pd.MultiIndex.from_tuples([('wind_speed',"10"),('temperature',"2")]),
-		index=components_data.index)
+		poa_data = pd.DataFrame(columns= pd.MultiIndex.from_tuples([('temperature',"2"),('wind_speed',"10"),('wind_speed',"100"),('wind_direction',"10"),('wind_direction',"100")]),
+		index=weather_data.index)
 
-		poa_data.loc[:,('temperature',"2")] = components_data['T2m']
-		poa_data.loc[:,('wind_speed',"10")] = components_data['WS10m']
-		poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
+
+		poa_data.loc[:,('temperature',"2")] = weather_data['temperature_2m (°C)'] + self.param.param['T0']
+		poa_data.loc[:,('wind_speed',"10")] = weather_data['wind_speed_10m (m/s)']
+		poa_data.loc[:, ('wind_speed', "100")] = weather_data['wind_speed_100m (m/s)']
+		poa_data.loc[:, ('wind_direction', "10")] = weather_data['wind_direction_10m (°)']
+		poa_data.loc[:, ('wind_direction', "100")] = weather_data['wind_direction_100m (°)']
+		poa_data.index = pd.to_datetime(poa_data.index, format="%Y-%m-%dT%H:%M")
+		poa_data.index = poa_data.index.strftime('%Y%m%d:%H%M')
+
 		self.csv_weather_data = poa_data
-
-
 
 
 	#get data from open-meteo:  wind_speed and temperature at different heights
@@ -93,8 +113,8 @@ class WT():
 		# The order of variables in hourly or daily is important to assign them correctly below
 		url = "https://api.open-meteo.com/v1/forecast"
 		specs = {
-			"latitude": float(self.strWtLat),
-			"longitude": float(self.strWtLon),
+			"latitude": float(self.strWTLat),
+			"longitude": float(self.strWTLon),
 			"hourly": ["wind_speed_80m", "wind_speed_120m", "wind_speed_180m", "temperature_80m", "temperature_120m", "temperature_180m","wind_direction_80m", "wind_direction_120m", "wind_direction_180m"],
 			"wind_speed_unit": "ms",
 			"timezone": "Europe/Berlin"
@@ -147,19 +167,11 @@ class WT():
 
 
 	#creates powerdata and saves it as pd.Series
-	def funcCreatePowerData(self, use_csv = False, use_pvUncertainty = False):
-
-		if use_csv == True:
-			weatherKey = "csv"
-
-		elif use_pvUncertainty == True:
-			weatherKey = "online"
-		else:
-			weatherKey = "online noisy"
+	def funcCreatePowerData(self, use_csv = False, use_wtUncertainty = False):
 
 		#ignore wind_direction - maybe use it later for corrections(dependent of turbine angle)
-		weather_dict = {"online" : self.online_weather_data, "online_noisy" : self.online_weather_data_noisy, "csv": self.csv_weather_data}
-		weather = weather_dict[weatherKey][["wind_speed","temperature"]].copy()
+		#weather_dict = {"online" : self.online_weather_data, "online_noisy" : self.online_weather_data_noisy, "csv": self.csv_weather_data}
+		weather = self.weather_data[["wind_speed","temperature"]].copy()
 
 		#add constant roughness length to the dataframe - not noticeably applied 
 		weather["roughness_length"] = self.roughnessLength
@@ -189,7 +201,7 @@ class WT():
 
 		modelChain = ModelChain(turbine,**modelchain_data).run_model(weather)
 
-		self.powerOutput = modelChain.power_output.rename("Power [MW]")
+		self.powerOutput = modelChain.power_output.rename("Power [kW]") * self.param.param['wt']['powerOfSystem'] / self.param.param['wt']['powerOfTurbine'] / 1000
 
 
 ########## Uncertainty ##########
@@ -210,9 +222,7 @@ class WT():
 
 	#add normal distributed noise to each of the weather data columns
 	def funcAddNoiseWeather(self, useSigmaFrame = False):
-
-		weather = self.online_weather_data.copy(deep=True)
-
+		weather = self.weather_data.copy(deep=True)
 		if useSigmaFrame == False:
 			#iterate through all columns and sub columns
 			for key1 in self.covWeatherData:
@@ -224,22 +234,22 @@ class WT():
 						cov[i][i] = self.covWeatherData[key1][key2]
 
 					samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
-					weather.loc[:,(key1,key2)] = samples[0].astype(np.float32)
+					weather.loc[weather[key1][key2] > 0.01,(key1,key2)] = samples[0][weather[key1][key2] > 0.01].astype(np.float32)
 
 		else:
 			for key1 in ["wind_speed","wind_direction","temperature"]:
 				for key2 in ["80","120","180"]:
-					sigma = self.online_weather_data.loc[:,"sigma_"+key1].to_numpy()[0]
+					sigma = self.weather_data.loc[:,"sigma_"+key1].to_numpy()[0]
 					series = weather[key1][key2]
 					cov = np.identity(len(series)) *sigma
 					samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
-					weather.loc[:,(key1,key2)] = samples[0].astype(np.float32)
+					weather.loc[weather[key1][key2] > 0.01,(key1,key2)] = samples[0][weather[key1][key2] > 0.01].astype(np.float32)
 
 
-		self.online_weather_data_noisy = weather
+		self.weather_data_noisy = weather
 		#fix negative values
-		mask = self.online_weather_data_noisy < 0 
-		self.online_weather_data_noisy[mask] = 0
+		mask = self.weather_data_noisy < 0
+		self.weather_data_noisy[mask] = 0
 
 
 	#calculate uncertainty and mean correction for wind_speed, temperature and wind_direction as difference between forecast and actual data- calculate only from 2m value for temperature, 10m for wind values, since historical data only contain these values
@@ -252,8 +262,8 @@ class WT():
 
 		url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 		specs = {
-			"latitude": float(self.strWtLat),
-			"longitude": float(self.strWtLon),
+			"latitude": float(self.strWTLat),
+			"longitude": float(self.strWTLon),
 			"start_date": self.startDateToCalcUncertainty.strftime("%Y-%m-%d"),
 			"end_date": self.stopDateToCalcUncertainty.strftime("%Y-%m-%d"),
 			"hourly": ["wind_speed_10m","wind_direction_10m","temperature_2m"],
@@ -267,7 +277,7 @@ class WT():
 		hourly = response.Hourly()
 		hourly_wind_speed_10m_hist_forecast = hourly.Variables(0).ValuesAsNumpy()
 		hourly_wind_direction_10m_hist_forecast = hourly.Variables(1).ValuesAsNumpy()
-		temperature_2m_hist_forecast = hourly.Variables(2).ValuesAsNumpy()
+		temperature_2m_hist_forecast = hourly.Variables(2).ValuesAsNumpy() + self.param.param['T0']
 		
 
 		#get historical data - specs are the same
@@ -280,7 +290,7 @@ class WT():
 		hourly = response.Hourly()
 		hourly_wind_speed_10m_hist = hourly.Variables(0).ValuesAsNumpy()
 		hourly_wind_direction_10m_hist = hourly.Variables(1).ValuesAsNumpy()
-		temperature_2m_hist = hourly.Variables(2).ValuesAsNumpy()
+		temperature_2m_hist = hourly.Variables(2).ValuesAsNumpy() + self.param.param['T0']
 
 		wind_speed_diff = hourly_wind_speed_10m_hist_forecast-hourly_wind_speed_10m_hist
 		wind_direction_diff = hourly_wind_direction_10m_hist_forecast-hourly_wind_direction_10m_hist
@@ -332,19 +342,19 @@ class WT():
 
 		#use array_fit_parameters (mu) to correct the weather data with the most common deviation
 		#values should not be negative
-		if correctWeather == True:
+		if correctWeather:
 			wdat = ["wind_speed","wind_direction","temperature"]
 			for i in range(3):
 				for key in ["80","120","180"]:
-					self.online_weather_data.loc[:,(wdat[i],key)] = self.online_weather_data.loc[:,(wdat[i],key)] - array_fit_parameters[i][0]
+					self.weather_data.loc[:,(wdat[i],key)] = self.weather_data.loc[:,(wdat[i],key)] - array_fit_parameters[i][0]
 		#correct negative values
-		mask = self.online_weather_data < 0 
-		self.online_weather_data[mask] = 0
+		mask = self.weather_data < 0
+		self.weather_data[mask] = 0
 
 		
 		for i,key in enumerate(["wind_speed","wind_direction","temperature"]):
-			self.online_weather_data.loc[:,"mu_"+key] = float(array_fit_parameters[i][0])
-			self.online_weather_data.loc[:,"sigma_"+key] = float(array_fit_parameters[i][1])
+			self.weather_data.loc[:,"mu_"+key] = float(array_fit_parameters[i][0])
+			self.weather_data.loc[:,"sigma_"+key] = float(array_fit_parameters[i][1])
 		
 
 		

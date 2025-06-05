@@ -32,32 +32,33 @@ timeLimit = 1000                           # Time limit for the solver to termin
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2025-06-03 01:00")
+startTime = pd.Timestamp("2025-06-05 01:00")
 useRealForecast = True
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
-testFeasibility = False                     # If true the optimization model will be tested for feasibility
+testFeasibility = False                    # If true the optimization model will be tested for feasibility
 rateOfChangeConstraints = False            # If true rate of change constraints will be considered
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = True                          # If true pv data will be considered, otherwise it is set to zero
-considerWT = False                        # If true wind data will be considered, otherwise it is set to zero
+considerPV = False                         # If true pv data will be considered, otherwise it is set to zero
+considerWT = True                        # If true wind data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
 use_pvUncertainty = False
-pvUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
+pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 use_wtUncertainty = False
-wtUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
+wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
 strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\calc'
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
+strPathWTData = r'C:\PROJEKTE\PTX\Max\50_Daten\06_Wind'
 strPathPPData = r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie' 
 strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v3' 
 strPathAdaptationData = r'C:\PROJEKTE\PTX\Max\22_Adaptation'    
@@ -88,6 +89,7 @@ args = [optimizationHorizon,
         strPathCharMapData,
         strPathCharMapDataCalc,
         strPathPVData,
+        strPathWTData,
         strPathPPData,
         strPathInitialValues,
         strPathAdaptationData]

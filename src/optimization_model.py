@@ -542,7 +542,7 @@ class Optimization_Model:
 
         
         ## Wind considered
-        if not self.param.param['controlParameters']['considerWind']:
+        if not self.param.param['controlParameters']['considerWT']:
             self.m.addConstrs(
                 self.OptVarUsageOfWind[t] == 0 for t in self.arrTime)
 

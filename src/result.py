@@ -16,14 +16,13 @@ from vis import visu, createGif
 
 class Result():
     def __init__(self, param):
-        self.dictResult = {'input': {}, 'output_Scheduling': {}, 'output_Sim': {}, 'costs': {}, 'param': {}}
-        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
-        self.param = None
         self.funcUpdate(param)
 
 
     def funcUpdate(self, param):
         self.param = param
+        self.dictResult = {'input': {}, 'output_Scheduling': {}, 'output_Sim': {}, 'costs': {}, 'param': {}}
+        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
         self.dictResult['param'] = self.param
 
 

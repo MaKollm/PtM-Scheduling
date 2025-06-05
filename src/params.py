@@ -27,7 +27,7 @@ class Param:
             self.benchmark = args[9]
             self.sameOutputAsBenchmark = args[10]
 
-            self.rateOfChangeConstranints = args[11]
+            self.rateOfChangeConstraints = args[11]
             self.transitionConstraints = args[12]
             self.powerSale = args[13]
             self.powerPurchase = args[14]
@@ -46,9 +46,10 @@ class Param:
             self.strPathCharMapData = args[23]
             self.strPathCharMapDataCalc = args[24]
             self.strPathPVData = args[25]
-            self.strPathPPData = args[26]
-            self.strPathInitialData = args[27]
-            self.strPathAdaptationData = args[28]
+            self.strPathWTData = args[26]
+            self.strPathPPData = args[27]
+            self.strPathInitialData = args[28]
+            self.strPathAdaptationData = args[29]
         
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
@@ -201,7 +202,7 @@ class Param:
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 10
-        self.param['production']['minMethanolOpt'] = 50 #113.75 #108.065
+        self.param['production']['minMethanolOpt'] = 10 #113.75 #108.065
         self.param['production']['methanol'] = 0      
         
         
@@ -231,7 +232,7 @@ class Param:
         self.param['controlParameters']['objectiveFunction'] = self.objectiveFunction
         self.param['controlParameters']['benchmark'] = self.benchmark
         self.param['controlParameters']['sameOutputAsBenchmark'] = self.sameOutputAsBenchmark
-        self.param['controlParameters']['rateOfChangeConstranints'] = self.rateOfChangeConstranints
+        self.param['controlParameters']['rateOfChangeConstraints'] = self.rateOfChangeConstraints
         self.param['controlParameters']['transitionConstraints'] = self.transitionConstraints
         self.param['controlParameters']['powerSale'] = self.powerSale
         self.param['controlParameters']['powerPurchase'] = self.powerPurchase
@@ -247,7 +248,8 @@ class Param:
         self.param['controlParameters']['peakLoadCapping'] = self.peakLoadCapping
         self.param['controlParameters']['pathCharMapData'] = self.strPathCharMapData
         self.param['controlParameters']['pathCharMapDataCalc'] = self.strPathCharMapDataCalc
-        self.param['controlParameters']['pathPVData'] = self.strPathPVData 
+        self.param['controlParameters']['pathPVData'] = self.strPathPVData
+        self.param['controlParameters']['pathWTData'] = self.strPathWTData
         self.param['controlParameters']['pathPPData'] = self.strPathPPData
         self.param['controlParameters']['pathInitialData'] = self.strPathInitialData
         self.param['controlParameters']['pathAdaptationData'] = self.strPathAdaptationData
@@ -364,17 +366,15 @@ class Param:
 
         ## PV
         self.param['pv'] = {}
+        self.param["pv"]["strPvLat"] = "49.09"
+        self.param["pv"]["strPvLon"] = "8.44"
         self.param['pv']['module'] = 'Canadian_Solar_CS5P_220M___2009_'
         self.param['pv']['inverter'] = 'ABB__PVI_3_0_OUTD_S_US__208V_'#'ABB__MICRO_0_25_I_OUTD_US_208__208V_'
         self.param['pv']['powerOfModule'] = 0.22
         self.param['pv']['powerOfSystem'] = 200
         self.param['pv']['numberOfUncertaintySamples'] = 100
-        self.param['pv']['alpha'] = 0.9
-        self.param['pv']['covariance'] = 8
-        self.param["pv"]["strPvLat"] = "49.09"
-        self.param["pv"]["strPvLon"] = "8.44"
-        self.param["pv"]["covScalarPowerOutput"] = 1e+04
-        self.param["pv"]["covWeatherData"] = {'poa_global':100, 'poa_direct':100, 'poa_diffuse':100, 'temp_air':100, 'wind_speed':100}
+        self.param["pv"]["covScalarPowerOutput"] = 10
+        self.param["pv"]["covWeatherData"] = {'poa_global':10, 'poa_direct':10, 'poa_diffuse':10, 'temp_air':1, 'wind_speed':3}
         self.param["pv"]["startDateToCalcUncertainty"] = pd.Timestamp("2024-01-01")
         self.param["pv"]["stopDateToCalcUncertainty"] = pd.Timestamp("2025-04-30")
 
@@ -383,14 +383,16 @@ class Param:
 
         ## Wind turbine
         self.param["wt"] = {}
-        self.param["wt"]["strWtLat"] = "49.09"
-        self.param["wt"]["strWtLon"] = "8.44"
+        self.param["wt"]["strWTLat"] = "49.09"
+        self.param["wt"]["strWTLon"] = "8.44"
         self.param["wt"]["roughnessLength"] = 2 #find true value for actual coordinates
         self.param["wt"]["turbineType"] = "E-126/4200" #as in oedb turbine library
         self.param["wt"]["hubHeight"] = 135 #in m
+        self.param['wt']['powerOfSystem'] = 100
+        self.param['wt']['powerOfTurbine'] = 4200 # 4200000 W
         self.param['wt']['numberOfUncertaintySamples'] = 100
-        self.param["wt"]["covScalarPowerOutput"] = 1e+10
-        self.param["wt"]["covWeatherData"] = {"wind_speed": {"80":1 , "120":1 , "180":1}, "wind_direction": {"80": 1 , "120": 1 , "180": 1}, "temperature": {"80":1 , "120": 1, "180":1}}
+        self.param["wt"]["covScalarPowerOutput"] = 100
+        self.param["wt"]["covWeatherData"] = {"wind_speed": {"80":3 , "120":3 , "180":3}, "wind_direction": {"80": 10 , "120": 10 , "180": 10}, "temperature": {"80":1 , "120": 1, "180":1}}
         self.param["wt"]["startDateToCalcUncertainty"] = pd.Timestamp("2024-01-01")
         self.param["wt"]["stopDateToCalcUncertainty"] = pd.Timestamp("2025-04-30")
 
@@ -473,7 +475,7 @@ class Param:
         self.param['constraints'] = {}
         self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
 
-        if self.param['controlParameters']['benchmark'] == True:
+        if self.param['controlParameters']['benchmark']:
             self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
             self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
         else:

@@ -33,14 +33,13 @@ class PV:
         self.param = param
         self.strModule = self.param.param['pv']['module']
         self.strInverter = self.param.param['pv']['inverter']
-        self.strPvLat = self.param.param["pv"]["strPvLat"]
-        self.strPvLon = self.param.param["pv"]["strPvLon"]
-        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
-        self.fAlpha = self.param.param['pv']['alpha']
-        self.fCovValue = self.param.param['pv']['covariance']
-        self.pathPVData = param.param['controlParameters']['pathPVData']
         self.powerOfSystem = param.param['pv']['powerOfSystem']
         self.powerOfModule = param.param['pv']['powerOfModule']
+        self.strPvLat = self.param.param["pv"]["strPvLat"]
+        self.strPvLon = self.param.param["pv"]["strPvLon"]
+
+        self.iNumberUncertaintySamples = self.param.param['pv']['numberOfUncertaintySamples']
+        self.pathPVData = param.param['controlParameters']['pathPVData']
         self.covScalarPowerOutput = param.param["pv"]["covScalarPowerOutput"]
         self.covWeatherData = param.param["pv"]["covWeatherData"]
 
@@ -48,8 +47,9 @@ class PV:
         self.stopDateToCalcUncertainty = param.param["pv"]["stopDateToCalcUncertainty"]
 
         self.online_weather_data = None
-        self.online_weather_data_noisy = None
+        self.weather_data_noisy = None
         self.csv_weather_data = None
+        self.weather_data = None
 
         self.funcLoadCSV()
 
@@ -58,34 +58,41 @@ class PV:
         self.param = param
 
         self.funcGetOnlineData()
-        self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_pvUncertainty=self.param.param['controlParameters']['use_pvUncertainty'])
+
+        # choose weather data
+        if self.param.param['controlParameters']['useRealForecast']:
+            self.weather_data = self.online_weather_data
+        else:
+            self.weather_data = self.csv_weather_data
 
         # calculate uncertainties
-        if param.param["controlParameters"]["use_pvUncertainty"] == True:
-            if param.param["controlParameters"]["pvUncertainty"] == "power_noise":
-                self.funcAddNoisePowerOutput()
-            elif param.param["controlParameters"]["pvUncertainty"] == "weather_noise":
+        if param.param["controlParameters"]["use_pvUncertainty"]:
+            self.funcCalcUncertaintyWeather(plot=False, correctWeather=False)
+            if param.param["controlParameters"]["pvUncertainty"] == "weather_noise":
                 self.funcAddNoiseWeather(useSigmaFrame = False)
+                self.weather_data = self.weather_data_noisy
             elif param.param["controlParameters"]["pvUncertainty"] == "weather_forecast":
-                self.funcCalcUncertaintyWeather(plot = False, correctWeather = True)
+                self.funcAddNoiseWeather(useSigmaFrame=True)
+                self.weather_data = self.weather_data_noisy
+
+        # calculate power
+        self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_pvUncertainty=self.param.param['controlParameters']['use_pvUncertainty'])
+
+        if param.param["controlParameters"]["use_pvUncertainty"] and param.param["controlParameters"]["pvUncertainty"] == "power_noise":
+            self.funcAddNoisePowerOutput()
+            self.powerOutput = self.powerOutputNoisy
+
 
         # timestamps are saved in param
         start = self.param.param["controlParameters"]["startTimeIteration"]
         end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
-        print(start)
-        print(end)
-        print(self.powerOutput)
-        if param.param["controlParameters"]["considerPV"] == True:
+        if param.param["controlParameters"]["considerPV"]:
             self.arrPowerAvailable = self.powerOutput[start:end].to_numpy()
-
         else:
             self.arrPowerAvailable = np.zeros(len(self.powerOutput))
 
         if len(self.arrPowerAvailable) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
             raise Exception("Error: The start time and the time of the weather forecast or the historical weather data do not match")
-        print(self.arrPowerAvailable)
-        print(len(self.arrPowerAvailable))
-        input("fdsafd")
 
 
     def funcLoadCSV(self):
@@ -159,7 +166,7 @@ class PV:
         self.online_weather_data = hourly_dataframe
 
 
-    def funcCreatePowerData(self, use_csv = False, use_pvUncertainty = False):
+    def funcCreatePowerData(self, use_csv = False, use_pvUncertainty = False, pv_Uncertainty = "power_noise"):
 
         # PV
         location = Location(latitude = float(self.strPvLat), longitude = float(self.strPvLon),tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
@@ -179,15 +186,7 @@ class PV:
         
         modelChain = ModelChain(system, location)
 
-        if use_csv == True:
-            modelChain.run_model_from_poa(self.csv_weather_data)
-
-        elif use_pvUncertainty == True:
-             modelChain.run_model_from_poa(self.online_weather_data_noisy)
-
-        else:
-            modelChain.run_model_from_poa(self.online_weather_data)
-
+        modelChain.run_model_from_poa(self.weather_data)
 
         self.dataRaw = modelChain.results.ac
         for i in range(0, len(self.dataRaw)):
@@ -206,17 +205,16 @@ class PV:
             cov[i][i] = self.covScalarPowerOutput
 
         samples = np.random.multivariate_normal(self.powerOutput.to_numpy(), cov, size=1)
-        self.powerOutputNoisy = (self.powerOutput.copy(deep=True)*0 + samples[0]).rename("Power + Noise [kW]")
+
+        self.powerOutputNoisy = pd.Series(np.where(self.powerOutput > 0, samples[0], self.powerOutput),index = self.powerOutput.index,name = "Power + Noise [kW]")
         #fix negative values
         mask = self.powerOutputNoisy < 0
         self.powerOutputNoisy[mask]  = 0
-        print("1")
 
 
     #add normal distributed noise to each of the weather data columns
     def funcAddNoiseWeather(self, useSigmaFrame = False):
-        weather = self.online_weather_data.copy(deep=True)
-        print("2")
+        weather = self.weather_data.copy(deep=True)
         if useSigmaFrame == False:
             #iterate through all columns and sub columns
             for key in self.covWeatherData:
@@ -227,31 +225,30 @@ class PV:
                     cov[i][i] = self.covWeatherData[key]
 
                 samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
-                weather.loc[:,key] = samples[0].astype(np.float32)
+                weather.loc[weather[key] > 0.01, key] = samples[0][weather[key] > 0.01].astype(np.float32)
 
         else:
             for key in ['poa_global', 'poa_direct', 'poa_diffuse', 'temp_air', 'wind_speed']:
-                    sigma = self.online_weather_data.loc[:,"sigma_"+key].to_numpy()[0]
-                    series = weather[key]
-                    cov = np.identity(len(series)) *sigma
-                    samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
-                    weather.loc[:,key] = samples[0].astype(np.float32)
+                sigma = self.weather_data.loc[:,"sigma_"+key].to_numpy()[0]
+                series = weather[key]
+                cov = np.identity(len(series)) *sigma
+                samples = np.random.multivariate_normal(series.to_numpy(), cov, size=1)
+                weather.loc[weather[key] > 0.01,key] = samples[0][weather[key] > 0.01].astype(np.float32)
 
 
-        self.online_weather_data_noisy = weather
+        self.weather_data_noisy = weather
         #fix negative values
-        mask = self.online_weather_data_noisy < 0 
-        self.online_weather_data_noisy[mask] = 0
+        mask = self.weather_data_noisy < 0
+        self.weather_data_noisy[mask] = 0
 
 
-
-def funcCalcUncertaintyWeather(self, plot = False, correctWeather = True):
+    def funcCalcUncertaintyWeather(self, plot = False, correctWeather = True):
 
         #get archived forecast data
         cache_session = requests_cache.CachedSession('.cache', expire_after = 3600)
         retry_session = retry(cache_session, retries = 5, backoff_factor = 0.2)
         openmeteo = openmeteo_requests.Client(session = retry_session)
-        print("3")
+
         url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
         specs = {
             "latitude": float(self.strPvLat),
@@ -344,13 +341,13 @@ def funcCalcUncertaintyWeather(self, plot = False, correctWeather = True):
         
         #use array_fit_parameters (mu) to correct the weather data with the most common deviation
         if correctWeather == True:
-            for i, key in enumerate(self.online_weather_data.columns.to_numpy()):
-                self.online_weather_data.loc[:,key] = self.online_weather_data.loc[:,key] - array_fit_parameters[i][0]
+            for i, key in enumerate(self.weather_data.columns.to_numpy()):
+                self.weather_data.loc[:,key] = self.weather_data.loc[:,key] - array_fit_parameters[i][0]
             #fix negative values
-            mask = self.online_weather_data < 0 
-            self.online_weather_data[mask] = 0
+            mask = self.weather_data < 0
+            self.weather_data[mask] = 0
 
 
-        for i, key in enumerate(self.online_weather_data.columns.to_numpy()):
-            self.online_weather_data.loc[:,"mu_"+key] =  array_fit_parameters[i][0]
-            self.online_weather_data.loc[:,"sigma_"+key] = array_fit_parameters[i][1]
+        for i, key in enumerate(self.weather_data.columns.to_numpy()):
+            self.weather_data.loc[:,"mu_"+key] =  array_fit_parameters[i][0]
+            self.weather_data.loc[:,"sigma_"+key] = array_fit_parameters[i][1]

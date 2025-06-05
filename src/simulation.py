@@ -201,7 +201,7 @@ class Simulation:
         self.dictCosts['methanol'] = -np.sum(np.array(self.dictOutput_Scheduling['massFlowMethanolOut']) * self.param.param['prices']['methanol'])
         self.dictCosts['powerBought'] = np.sum(np.dot(self.param.param['prices']['power'], resultOpt.dictResult['input']['powerBought']))
         self.dictCosts['carbonIntensity'] = np.sum(np.dot(self.param.param['carbonIntensity']['carbonIntensity'], resultOpt.dictResult['input']['powerBought']))
-        self.dictCosts['powerBatterySold'] = -np.sum(self.param.param['prices']['powerSold']*resultOpt.dictResult['input']['actualPowerOutBatterySold'])
+        self.dictCosts['powerBatterySold'] = -np.sum(self.param.param['prices']['powerSold'] * np.array(resultOpt.dictResult['input']['actualPowerOutBatterySold']))
         
         self.dictCosts['all'] = sum(self.dictCosts.values())
 
