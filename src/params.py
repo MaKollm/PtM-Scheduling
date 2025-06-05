@@ -5,10 +5,8 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
-from gurobipy import GRB
-from datetime import  date, datetime, timedelta
 
-class Param():
+class Param:
 
     def __init__(self, args):
 

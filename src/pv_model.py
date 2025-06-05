@@ -28,7 +28,7 @@ import warnings
 
 # Quelle re.jrc.ec.europa.eu
 
-class PV():
+class PV:
     def __init__(self, param):
         self.param = param
         self.strModule = self.param.param['pv']['module']

@@ -40,7 +40,7 @@ objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensit
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
 testFeasibility = False                     # If true the optimization model will be tested for feasibility
-rateOfChangeConstranints = False            # If true rate of change constraints will be considered
+rateOfChangeConstraints = False            # If true rate of change constraints will be considered
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
@@ -49,9 +49,9 @@ considerWT = False                        # If true wind data will be considered
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
-use_pvUnvertainty = False
+use_pvUncertainty = False
 pvUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
-use_wtUnvertainty = False
+use_wtUncertainty = False
 wtUncertainty = "weather_noise"             # "power_noise", "weather_noise", "weather_forecast"
 
 strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
@@ -62,35 +62,35 @@ strPathPPData = r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie'
 strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v3' 
 strPathAdaptationData = r'C:\PROJEKTE\PTX\Max\22_Adaptation'    
 
-args = [optimizationHorizon, 
-            timeStep, 
-            timeLimit,
-            optimalityGap,
-            testFeasibility,
-            numHoursToSimulate,
-            startTime,
-            useRealForecast,  
-            objectiveFunction,
-            benchmark, 
-            sameOutputAsBenchmark, 
-            rateOfChangeConstranints, 
-            transitionConstraints, 
-            powerSale, 
-            powerPurchase,
-            considerPV, 
-            considerWT,
-            considerBattery, 
-            peakLoadCapping,
-            use_pvUnvertainty,
-            pvUncertainty,
-            use_wtUnvertainty,
-            wtUncertainty,
-            strPathCharMapData,
-            strPathCharMapDataCalc,
-            strPathPVData,
-            strPathPPData,
-            strPathInitialValues,
-            strPathAdaptationData]
+args = [optimizationHorizon,
+        timeStep,
+        timeLimit,
+        optimalityGap,
+        testFeasibility,
+        numHoursToSimulate,
+        startTime,
+        useRealForecast,
+        objectiveFunction,
+        benchmark,
+        sameOutputAsBenchmark,
+        rateOfChangeConstraints,
+        transitionConstraints,
+        powerSale,
+        powerPurchase,
+        considerPV,
+        considerWT,
+        considerBattery,
+        peakLoadCapping,
+        use_pvUncertainty,
+        pvUncertainty,
+        use_wtUncertainty,
+        wtUncertainty,
+        strPathCharMapData,
+        strPathCharMapDataCalc,
+        strPathPVData,
+        strPathPPData,
+        strPathInitialValues,
+        strPathAdaptationData]
 
 
 ##################################
@@ -152,14 +152,14 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, wt,
     ########## Optimization ########
 
     ## Create models for optimization
-    if bUseCalcCharMap == True:
+    if bUseCalcCharMap:
         optModel.funcCreateOptimizationModel(cmCalc, elec, pv, wt, pp, ci)
         optModel.funcRunOptimization()
 
         ## Create results
         resultOpt = Result(param)
         resultOpt.funcGetResult(optModel, cmCalc, elec, pv, wt, pp, ci)
-    elif bUseDriftCharMap == True:
+    elif bUseDriftCharMap:
         optModel.funcCreateOptimizationModel(cmDrift, elec, pv, wt, pp, ci)
         optModel.funcRunOptimization()
 

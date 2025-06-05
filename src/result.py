@@ -4,10 +4,8 @@
 #############################
 ########## Results ##########
 
-import gurobipy as gp
 import numpy as np
 import matplotlib.pyplot as plt
-from gurobipy import GRB
 from gurobipy import *
 from scipy.io import savemat
 from datetime import datetime
@@ -18,21 +16,22 @@ from vis import visu, createGif
 
 class Result():
     def __init__(self, param):
+        self.dictResult = {'input': {}, 'output_Scheduling': {}, 'output_Sim': {}, 'costs': {}, 'param': {}}
+        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
+        self.param = None
         self.funcUpdate(param)
 
 
     def funcUpdate(self, param):
         self.param = param
-        self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
-        self.dictResult = {'input': {}, 'output_Scheduling': {}, 'output_Sim': {}, 'costs': {}, 'param': {}}
         self.dictResult['param'] = self.param
 
 
-    def funcGetResult(self, optModel, cm, elec, pv, pp, ci):
+    def funcGetResult(self, optModel, cm, elec, pv, wt, pp, ci):
     
-        self.funcCalculateInputs(optModel, cm, elec, pv, pp, ci)
+        self.funcCalculateInputs(optModel, cm, elec, pv, wt, pp, ci)
 
-    def funcCalculateInputs(self, optModel, cm, elec, pv, pp, ci):
+    def funcCalculateInputs(self, optModel, cm, elec, pv, wt, pp, ci):
         
         # Input variables
         if optModel.m.Status == GRB.OPTIMAL or (optModel.m.Status == GRB.TIME_LIMIT and optModel.m.SolCount > 0):
@@ -285,7 +284,7 @@ class Result():
 
       
 
-    def funcPrintResult(self, optModel, cm, elec, pv, pp, ci):
+    def funcPrintResult(self, optModel, cm, elec, pv, wt, pp, ci):
         
         ########## Input ##########
         print('Input variables')
@@ -391,7 +390,7 @@ class Result():
             pickle.dump(self.dictResult,f)
 
     
-    def funcVisualizationResult(self, OptModel, cm, elec, pv, pp, ci):
+    def funcVisualizationResult(self, OptModel, cm, elec, pv, wt, pp, ci):
 
         ###################################
         ########## Visualization ########## 

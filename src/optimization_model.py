@@ -10,7 +10,7 @@ import pickle
 import scipy.io
 
 
-class Optimization_Model():
+class Optimization_Model:
 
     def __init__(self, param):
         self.funcUpdate(param)
@@ -21,17 +21,17 @@ class Optimization_Model():
         self.arrTime = list(range(0,self.param.param['controlParameters']['numberOfTimeSteps']))
 
 
-    def funcCreateOptimizationModel(self, cm, elec, pv, pp, ci):
+    def funcCreateOptimizationModel(self, cm, elec, pv, wt, pp, ci):
         self.m = gp.Model('ptm')
         self.m.ModelSense = GRB.MINIMIZE
-        self.funcCreateVariables(cm, elec, pv, pp, ci)
+        self.funcCreateVariables(cm, elec, pv, wt, pp, ci)
 
         # Extract information from adaptation which operation points to use
-        #self.funcExtractInformationFromAdaptation(cm, elec, pv, pp)
+        #self.funcExtractInformationFromAdaptation(cm, elec, pv, wt, pp)
 
-        self.funcSetInitialValues(cm, elec, pv, pp, ci)
-        self.funcCreateConstraints(cm, elec, pv, pp, ci)
-        self.funcCreateCostFunction(cm, elec, pv, pp, ci)
+        self.funcSetInitialValues(cm, elec, pv, wt, pp, ci)
+        self.funcCreateConstraints(cm, elec, pv, wt, pp, ci)
+        self.funcCreateCostFunction(cm, elec, pv, wt, pp, ci)
 
         self.m.update()
 
@@ -47,7 +47,7 @@ class Optimization_Model():
 
 
     ########## Initial Values ##########
-    def funcSetInitialValues(self, cm, elec, pv, pp, ci):
+    def funcSetInitialValues(self, cm, elec, pv, wt, pp, ci):
         if "initialData" in self.param.param:
             # Check if the time horizon of the initial data is the same as the time horizon of the current optimization
             if self.param.param['initialData']["param"]['controlParameters']['numberOfTimeSteps'] == self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['initialData']["param"]['optimization']['status'] != GRB.INFEASIBLE:
@@ -127,7 +127,7 @@ class Optimization_Model():
             print("File with initial values not found")
 
     ########## Variables ##########
-    def funcCreateVariables(self, cm, elec, pv, pp, ci):
+    def funcCreateVariables(self, cm, elec, pv, wt, pp, ci):
         self.OptVarOperationPointCO2CAP = self.m.addVars(self.arrTime,cm.arrOperationPointsCO2CAP, vtype=GRB.BINARY)
         self.OptVarOperationPointSYN = self.m.addVars(self.arrTime,cm.arrOperationPointsSYN, vtype=GRB.BINARY)
         self.OptVarOperationPointDIS = self.m.addVars(self.arrTime,cm.arrOperationPointsDIS, vtype=GRB.BINARY)
@@ -177,7 +177,7 @@ class Optimization_Model():
         
 
     ########## Cost function ##########
-    def funcCreateCostFunction(self, cm, elec, pv, pp, ci):
+    def funcCreateCostFunction(self, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
         if self.param.param['controlParameters']['objectiveFunction'] == 1:
@@ -194,7 +194,7 @@ class Optimization_Model():
         
 
     ########## Extract information from adaptation ##########
-    def funcExtractInformationFromAdaptation(self, cm, elec, pv, pp, ci):
+    def funcExtractInformationFromAdaptation(self, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
 
 
@@ -207,7 +207,7 @@ class Optimization_Model():
 
 
     ########## Constraints ##########
-    def funcCreateConstraints(self, cm, elec, pv, pp, ci):
+    def funcCreateConstraints(self, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
 
           

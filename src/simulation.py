@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import copy
 
 
-class Simulation():
+class Simulation:
     def __init__(self, param):
         self.funcUpdate(param)
 
@@ -24,15 +24,15 @@ class Simulation():
         self.arrConstrViolationInput = []
         self.dictConstrViolationOutput = {}
 
-    def funcStartSimulation(self, param, resultOpt, cm, elec, pv, pp, ci):
+    def funcStartSimulation(self, param, resultOpt, cm, elec, pv, wt, pp, ci):
         
         self.funcUpdate(param)
         
-        self.funcSimulate(resultOpt, cm, elec, pv, pp, ci)
-        self.funcCalculateCosts(resultOpt, cm, elec, pv, pp, ci)
+        self.funcSimulate(resultOpt, cm, elec, pv, wt, pp, ci)
+        self.funcCalculateCosts(resultOpt, cm, elec, pv, wt, pp, ci)
 
 
-    def funcSimulate(self, resultOpt, cm, elec, pv, pp, ci):
+    def funcSimulate(self, resultOpt, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
         # Output variables
@@ -194,7 +194,7 @@ class Simulation():
         resultOpt.dictResult['output_Sim'] = self.dictOutput_Sim
 
 
-    def funcCalculateCosts(self, resultOpt, cm, elec, pv, pp, ci):
+    def funcCalculateCosts(self, resultOpt, cm, elec, pv, wt, pp, ci):
 
         # Costs
         self.dictCosts['methanol'] = -np.sum(np.array(self.dictOutput_Scheduling['massFlowMethanolOut']) * self.param.param['prices']['methanol'])
