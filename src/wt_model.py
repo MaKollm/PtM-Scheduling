@@ -202,9 +202,9 @@ class WT:
 		modelChain = ModelChain(turbine,**modelchain_data).run_model(weather)
 
 		self.powerOutput = modelChain.power_output.rename("Power [kW]") * self.param.param['wt']['powerOfSystem'] / self.param.param['wt']['powerOfTurbine'] / 1000
+		self.powerOutput.index = pd.to_datetime(self.powerOutput.index, format="%Y%m%d:%H%M")
 
-
-########## Uncertainty ##########
+	########## Uncertainty ##########
 
 	#add normal distributed noise to each entry of the powerOutput array and save it as different pd.Series
 	def funcAddNoisePowerOutput(self):

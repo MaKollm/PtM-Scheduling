@@ -32,8 +32,8 @@ timeLimit = 1000                           # Time limit for the solver to termin
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2025-06-05 01:00")
-useRealForecast = True
+startTime = pd.Timestamp("2023-06-03 01:00")
+useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
@@ -216,7 +216,7 @@ def main(argWorkflow):
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 5
+        numberOfIterations = 1
 
 
         bUseCalcCharMap = False
