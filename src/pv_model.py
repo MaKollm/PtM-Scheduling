@@ -85,12 +85,15 @@ class PV:
 
         # timestamps are saved in param
         start = self.param.param["controlParameters"]["startTimeIteration"]
-        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
+        end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"]-1 )
         if param.param["controlParameters"]["considerPV"]:
             self.arrPowerAvailable = self.powerOutput[start:end].to_numpy()
         else:
             self.arrPowerAvailable = np.zeros(len(self.powerOutput))
 
+        print(self.powerOutput[start:end])
+        print(len(self.arrPowerAvailable),self.param.param["controlParameters"]["optimizationHorizon"])
+        print(self.arrPowerAvailable)
         if len(self.arrPowerAvailable) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
             raise Exception("Error: The start time and the time of the weather forecast or the historical weather data do not match")
 
@@ -112,6 +115,9 @@ class PV:
         poa_data['temp_air'] = components_data['T2m']
         poa_data['wind_speed'] = components_data['WS10m']
         poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
+        #round the entries down to the full hour
+        if poa_data.index[0].minute != 0 or poa_data.index[0].second != 0 or poa_data.index[0].microsecond != 0:
+            poa_data.index = pd.date_range(start=poa_data.index[0] - pd.Timedelta(minutes=poa_data.index[0].minute,seconds= poa_data.index[0].second,microseconds = poa_data.index[0].microsecond), periods=len(poa_data), freq='h')
         self.csv_weather_data = poa_data
 
 
