@@ -50,7 +50,17 @@ class Param:
             self.strPathPPData = args[27]
             self.strPathInitialData = args[28]
             self.strPathAdaptationData = args[29]
-        
+
+            self.constraintTypePV = args[30]
+            self.constraintTypeWT = args[31]
+            self.constraintEpsPV = args[32]
+            self.constraintEpsWT = args[33]
+            self.constraintCVaRBoundaryPV = args[34]
+            self.constraintCVaRBoundaryWT = args[35]
+            self.constraintUseSigmaPV = args[36]
+            self.constraintUseSigmaWT = args[37]
+
+
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
         self.param['controlParameters']['iteration'] = iteration

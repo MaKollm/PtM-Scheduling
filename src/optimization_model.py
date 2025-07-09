@@ -5,6 +5,8 @@ from characteristic_fields import *
 import gurobipy as gp
 from gurobipy import GRB
 from gurobipy import *
+from scipy.special import erfinv
+from scipy.stats import norm
 import os
 import pickle
 import scipy.io
@@ -35,6 +37,10 @@ class Optimization_Model:
 
         self.m.update()
 
+    def CVaR(self,alpha,mu,sigma):
+        z_alpha = norm.ppf(alpha)
+        phi = norm.pdf(z_alpha)
+        return mu + sigma * phi/(1-alpha)
 
     def funcRunOptimization(self):
         self.m.Params.TimeLimit = self.param.param['controlParameters']['timeLimit']
@@ -673,13 +679,57 @@ class Optimization_Model:
                 (self.OptVarPowerBought[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime[1:]), "Peak load capping")
             
 
-        # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV
-        self.m.addConstrs(
-            (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime[1:]), "PV upper bound available")
+        # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV 
+        if self.param.constraintUseSigmaPV == "const":
+            sigmaPV = np.full(self.param.param['controlParameters']['numberOfTimeSteps'], self.param.param["pv"]["covScalarPowerOutput"])
+        elif self.param.constraintUseSigmaPV == "arr":
+            raise KeyError("self.constraintUseSigmaPV == arr not implemented yet") #sigmaPV = self.param.param["pv"]["powerAvailableSigma"]
+        else:
+            raise ValueError("Unknown constraintUseSigmaPV: {}".format(self.param.constraintUseSigmaPV))
         
-        #self.m.addConstrs(
-        #    (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wind']['powerAvailable'][t] for t in self.arrTime[1:]), "Wind upper bound available")
+        
 
+        if self.param.constraintTypePV == "deterministic": #determinstic constraint
+            self.m.addConstrs(
+                (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime[1:]), "PV upper bound available")
+        
+        elif self.param.constraintTypePV == "chance": #chance constraint calculated analytically
+            self.m.addConstrs(
+                ( self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= np.sqrt(2) * sigmaPV[t] * erfinv(self.param.constraintEpsPV - 1/2) + self.param.param['pv']['powerAvailable'][t] for t in self.arrTime[1:]), "PV upper bound available")
+
+        elif self.param.constraintTypePV == "CVaR": #CVaR constraint calculated analytically
+            self.m.addConstrs(
+                (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.CVaR(self.param.constraintEpsPV,self.param.param['pv']['powerAvailable'][t],sigmaPV[t]) + self.param.constraintCVaRBoundaryPV for t in self.arrTime[1:]),"PV upper bound available")
+        else:
+            raise ValueError("Unknown constraint type for PV: {}".format(self.param.constraintTypePV))
+        
+
+
+        # Power used from WT and stored in battery from WT must be equal or smaller than power available from WT 
+        if self.param.constraintUseSigmaWT == "const":
+            sigmaWT = np.full(self.param.param['controlParameters']['numberOfTimeSteps'], self.param.param["wt"]["covScalarPowerOutput"])
+        elif self.param.constraintUseSigmaWT == "arr":
+            raise KeyError("self.constraintUseSigmaWT == arr not implemented yet") #sigmaWT = self.param.param["wt"]["powerAvailableSigma"]
+        else:
+            raise ValueError("Unknown constraintUseSigmaWT: {}".format(self.param.constraintUseSigmaWT))
+        
+        
+
+        if self.param.constraintTypeWT == "deterministic": #determinstic constraint
+            self.m.addConstrs(
+                (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wt']['powerAvailable'][t] for t in self.arrTime[1:]), "WT upper bound available")
+        
+        elif self.param.constraintTypeWT == "chance": #chance constraint calculated analytically
+            self.m.addConstrs(
+                ( self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= np.sqrt(2) * sigmaWT[t] * erfinv(self.param.constraintEpsWT - 1/2) + self.param.param['wt']['powerAvailable'][t] for t in self.arrTime[1:]), "WT upper bound available")
+
+        elif self.param.constraintTypeWT == "CVaR": #CVaR constraint calculated analytically
+            self.m.addConstrs(
+                (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.CVaR(self.param.constraintEpsWT,self.param.param['wt']['powerAvailable'][t],sigmaWT[t]) + self.param.constraintCVaRBoundaryWT for t in self.arrTime[1:]),"WT upper bound available")
+        else:
+            raise ValueError("Unknown constraint type for WT: {}".format(self.param.constraintTypeWT))
+        
+       
 
         ## Minimum operation point/operation mode constraint
         # Exactly one operation point for CO2-Capture has to be selected in every time step

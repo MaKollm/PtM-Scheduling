@@ -26,16 +26,25 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 2*24                 # Considered time period in hours
+optimizationHorizon = 24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
 timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
-numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2023-06-03 01:00")
+numHoursToSimulate = 7*24                     # Number of hours to simulate before adaptation takes place
+startTime = pd.Timestamp("2023-01-01 01:00")
 useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
+
+constraintTypePV = "CVaR"          # determistic, chance, CVaR
+constraintTypeWT = "CVaR"          # determistic, chance, CVaR
+constraintEpsPV = 0.6                     # Epsilon value for chance constraint/CVaR of PV
+constraintEpsWT = 0.05                      # Epsilon value for chance constraint/CVaR of WT
+constraintCVaRBoundaryPV = 100        # Boundary for the CVaR constraint
+constraintCVaRBoundaryWT = 0.05               # Boundary for the CVaR constraint
+constraintUseSigmaPV = "const"              # const: uses constant self.param.param["pv"]["covScalarPowerOutput"], arr: uses param.["pv"]["powerAvailableSigma"]
+constraintUseSigmaWT = "const"              # const: uses constant self.param.param["wt"]["covScalarPowerOutput"], arr: uses param.["wt"]["powerAvailableSigma"]
 
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
@@ -44,9 +53,9 @@ rateOfChangeConstraints = False            # If true rate of change constraints 
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = False                         # If true pv data will be considered, otherwise it is set to zero
+considerPV = True                         # If true pv data will be considered, otherwise it is set to zero
 considerWT = True                        # If true wind data will be considered, otherwise it is set to zero
-considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
+considerBattery = True                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
 use_pvUncertainty = False
@@ -54,12 +63,12 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
-strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\calc'
-strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\drift'
-strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
-strPathWTData = r'C:\PROJEKTE\PTX\Max\50_Daten\06_Wind'
-strPathPPData = r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie' 
+strPathCharMapData = r'C:\Users\jw141\Desktop\Material_Optimierung\maps_Aspen_v3'
+strPathCharMapDataCalc = r'C:\Users\jw141\Desktop\Material_Optimierung\maps_Aspen_v3\calc'
+strPathCharMapDataDrift = r'C:\Users\jw141\Desktop\Material_Optimierung\maps_Aspen_v3\drift'
+strPathPVData = r'C:\Users\jw141\Desktop\Material_Optimierung'
+strPathWTData = r'C:\Users\jw141\Desktop\Material_Optimierung'
+strPathPPData = r'C:\Users\jw141\Desktop\Material_Optimierung' 
 strPathInitialValues = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v3' 
 strPathAdaptationData = r'C:\PROJEKTE\PTX\Max\22_Adaptation'    
 
@@ -92,7 +101,16 @@ args = [optimizationHorizon,
         strPathWTData,
         strPathPPData,
         strPathInitialValues,
-        strPathAdaptationData]
+        strPathAdaptationData,
+        constraintTypePV,
+        constraintTypeWT, 
+        constraintEpsPV, 
+        constraintEpsWT, 
+        constraintCVaRBoundaryPV,
+        constraintCVaRBoundaryWT,
+        constraintUseSigmaPV,
+        constraintUseSigmaWT
+        ]
 
 
 ##################################
@@ -230,7 +248,11 @@ def main(argWorkflow):
         else:
             dataOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults)
 
-        createGif(results)
+
+        try:
+            createGif(results) #does not work
+        except:
+            print("GIF creation failed")
 
         startDrift = 10
         endDrift = 15
