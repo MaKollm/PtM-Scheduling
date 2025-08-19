@@ -10,6 +10,7 @@ from gurobipy import *
 from scipy.io import savemat
 from datetime import datetime
 import pickle
+import tkinter as tk
 
 from vis import visu, createGif
 
@@ -305,6 +306,40 @@ class Result():
 
     def funcPrintResult(self, optModel, cm, elec, pv, wt, pp, ci):
         
+
+        # Create the main window
+        root = tk.Tk()
+        root.title("Setpoints")
+
+  
+        # Example variables
+        biogas = self.dictResult['input']['massFlowBiogasIn'][0] * 100 / 6.91
+        hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] * 100 / 0.54
+
+        # Format the data
+        data_text = f"""
+        Volume flow of biogas (FIC-5007): {biogas:.2f} Nl/min
+        Volume flow of hydrogen (FIC-XXXX): {hydrogen:.2f} Nl/min
+        """
+        
+        data = [
+            ("Volume flow of biogas (FIC-5007) [Nl/min]:", f"{biogas:.2f}"),
+            ("Volume flow of hydrogen (FIC-XXXX) [Nl/min]", f"{hydrogen:.2f}"),
+        ]
+
+
+        # Daten anzeigen in zwei Spalten
+        for i, (label_text, value_text) in enumerate(data, start=1):
+            label = tk.Label(root, text=label_text, font=("Arial", 12), anchor="w", padx=10)
+            value = tk.Label(root, text=value_text, font=("Arial", 12), anchor="e", padx=10)
+            label.grid(row=i, column=0, sticky="w")
+            value.grid(row=i, column=1, sticky="e")
+
+
+        # Run the GUI loop
+        root.mainloop()
+
+
         ########## Input ##########
         print('Input variables')
         print('')

@@ -183,7 +183,7 @@ class Optimization_Model:
         if self.param.param['controlParameters']['objectiveFunction'] == 1:
             self.m.setObjective(0 
                 + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerBought[i] for i in self.arrTime))
-            
+
         if self.param.param['controlParameters']['objectiveFunction'] == 2:
             self.m.setObjective(0
             + gp.quicksum(self.param.param['carbonIntensity']['carbonIntensity'][i] * self.OptVarPowerBought[i] / 1000  * fTimeStep for i in self.arrTime))
@@ -306,6 +306,11 @@ class Optimization_Model:
         if self.param.param['controlParameters']['benchmark'] == False:
             if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
 
+                self.m.addConstr(
+                    (gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']))   
+
+
+                """
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
                     self.m.addConstr(
                         (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) 
@@ -314,6 +319,8 @@ class Optimization_Model:
                 self.m.addConstr(
                     (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']), "Minimum amount methanol produced 2")     
             
+                """
+
             else:
                 self.m.addConstr(
                     (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
@@ -706,18 +713,23 @@ class Optimization_Model:
 
 
 
-
+        self.m.addConstrs(
+            (self.OptVarCurrentStateCO2CAP[(t,3)] == 1 for t in self.arrTime), "State is always on")
+        self.m.addConstrs(
+            (self.OptVarCurrentStateSYN[(t,3)] == 1 for t in self.arrTime), "State is always on")
+        #self.m.addConstrs(
+        #    (self.OptVarCurrentStateDIS[(t,3)] == 1 for t in self.arrTime), "State is always on")
 
         ## Initial time step constraints
         # No operation point for Synthesis in initial time step
-        self.m.addConstr(
-            (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
         # No operation point for CO2-Capture in initial time step
-        self.m.addConstr(
-            (self.OptVarOperationPointSYN[(0,self.param.param['startValues']['operatingPointSYN'])] == 1), "No operation point for Synthesis in initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarOperationPointSYN[(0,self.param.param['startValues']['operatingPointSYN'])] == 1), "No operation point for Synthesis in initial time step")
         # No operation point for distillation in initial time step
-        self.m.addConstr(
-            (self.OptVarOperationPointDIS[(0,self.param.param['startValues']['operatingPointDIS'])] == 1), "No operation point for distillation in initial time step")
+        #self.m.addConstr(
+        #    (self.OptVarOperationPointDIS[(0,self.param.param['startValues']['operatingPointDIS'])] == 1), "No operation point for distillation in initial time step")
         # CO2-Capture is off in initial time step
         self.m.addConstr(
             (self.OptVarCurrentStateCO2CAP[(0,self.param.param['startValues']['stateCO2CAP'])] == 1), "State is off for CO2-Capture in initial time step")
@@ -728,8 +740,8 @@ class Optimization_Model:
         self.m.addConstr(
             (self.OptVarCurrentStateDIS[(0,self.param.param['startValues']['stateDIS'])] == 1), "State is off for distillation in initial time step")     
         # No power in electrolyser in initial time step
-        self.m.addConstrs(
-            (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
+        #self.m.addConstrs(
+        #    (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
 
         # No input or output for battery in first time step
         #self.m.addConstr(
@@ -834,10 +846,10 @@ class Optimization_Model:
             #    self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
         
 
-        self.m.addConstr(
-            (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
-        self.m.addConstr(
-            (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] >= self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']), "Storage H2 equal filling lower bound")
+        #self.m.addConstr(
+        #    (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
+        #self.m.addConstr(
+        #    (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] >= self.param.param['constraints']['methanolWaterStorageFillEqual']['UpperBound']), "Storage H2 equal filling lower bound")
 
 
 

@@ -17,7 +17,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-import matlab.engine
+#import matlab.engine
 import time
 
 #####################################
@@ -26,12 +26,12 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 2*24                 # Considered time period in hours
+optimizationHorizon = 1*24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
-timeLimit = 1000                           # Time limit for the solver to terminate in seconds
+timeLimit = 60                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
-numHoursToSimulate = 24                     # Number of hours to simulate before adaptation takes place
+numHoursToSimulate = 1                     # Number of hours to simulate before adaptation takes place
 startTime = pd.Timestamp("2023-06-03 01:00")
 useRealForecast = False
 
@@ -45,7 +45,7 @@ transitionConstraints = True                # If true transition constraints wil
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
 considerPV = False                         # If true pv data will be considered, otherwise it is set to zero
-considerWT = True                        # If true wind data will be considered, otherwise it is set to zero
+considerWT = False                        # If true wind data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
 
@@ -54,9 +54,9 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3'
-strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\calc'
-strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v3\drift'
+strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant'
+strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc'
+strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
 strPathWTData = r'C:\PROJEKTE\PTX\Max\50_Daten\06_Wind'
 strPathPPData = r'C:\PROJEKTE\PTX\Max\50_Daten\02_Energie' 
@@ -239,6 +239,7 @@ def main(argWorkflow):
         if useAdaptation == True:
             path = r'C:\PROJEKTE\PTX\Max\22_Adaptation\src'
             pathParam = r'C:\PROJEKTE\PTX\Max\22_Adaptation\param.mat'
+            """
             eng = matlab.engine.start_matlab()
             eng.addpath(path)
             eng.createInstances(nargout=0)
@@ -256,7 +257,7 @@ def main(argWorkflow):
                     bUseDriftCharMap = True
                 
                 dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
-
+            """
 
     return dataOpt
     

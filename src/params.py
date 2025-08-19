@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import os
 import pickle
+import tkinter as tk
 
 class Param:
 
@@ -54,7 +55,7 @@ class Param:
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
         self.param['controlParameters']['iteration'] = iteration
-        #self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTimeIteration'] + timedelta(hours=self.param['controlParameters']['numHoursToSimulate'])
+        self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTimeIteration'] + pd.Timedelta(hours=self.param['controlParameters']['numHoursToSimulate'])
 
 
     def funcUpdate(self, pv, wt, pp, ci, iteration):
@@ -70,7 +71,75 @@ class Param:
 
 
 
+    def speichern(self, iteration):
+        # Storages
+        pressure_H2 = self.pressure_H2_entry.get()
+        if pressure_H2.strip() == "":
+            pass
+        else:
+            self.param['storageH2']['InitialPressure'] = float(self.pressure_H2_entry.get())
+
+        self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
+        self.param['storageMethanolWater']['InitialFilling'] = 15.09 / 1000 + (np.pi * (0.451 / 2)**2 * float(self.filling_MeOH_entry.get()) / 1000) 
+
+        # Methanol produced 
+        methanol_produced = self.methanol_produced_entry.get()
+        if methanol_produced.strip() == "":
+            pass
+        else:
+            for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
+                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_produced_entry.get())
+        
+            self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+            self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
+        
+        # Storage filling level change
+        self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numTimeStepsToHorizonEnd'] - 1
+        self.param['constraints']['methanolWaterStorageEqualTime'] = self.param['controlParameters']['numTimeStepsToHorizonEnd'] - 1
+        self.param['constraints']['batteryChargeEqualTime'] = self.param['controlParameters']['numTimeStepsToHorizonEnd'] - 1
+
+        if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
+            self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
+            self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
+
+
+
+
     def funcStoreInitialData(self, iteration):
+        
+        
+        # Fenster erstellen
+        fenster = tk.Tk()
+        fenster.title("Daten zum Eingeben:")
+
+        # Labels und Eingabefelder
+        tk.Label(fenster, text="Druck des Wasserstofftanks [bar]:").grid(row=0, column=0)
+        self.pressure_H2_entry = tk.Entry(fenster)
+        self.pressure_H2_entry.grid(row=0, column=1)
+
+        tk.Label(fenster, text="Füllstand Methanol-Wasser Tank [mm]:").grid(row=1, column=0)
+        self.filling_MeOH_entry = tk.Entry(fenster)
+        self.filling_MeOH_entry.grid(row=1, column=1)
+
+        tk.Label(fenster, text="Methanol produziert in letzter Stunde [kg]:").grid(row=2, column=0)
+        self.methanol_produced_entry = tk.Entry(fenster)
+        self.methanol_produced_entry.grid(row=2, column=1)
+
+        # Button zum Speichern
+        speichern_button = tk.Button(fenster, text="Speichern", command=lambda: self.speichern(iteration))
+        speichern_button.grid(row=3, column=0, columnspan=2)
+
+        
+        # GUI starten
+        fenster.mainloop()
+
+
+        print(self.param['storageH2']['InitialPressure'])
+        print(self.param['storageMethanolWater']['InitialFilling'])
+        print(self.param['constraints']['methanolWaterStorageEqualValue'])
+        
+
+        """
         if os.path.isfile(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
             with open(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
                 self.param['initialData'] = pickle.load(f)
@@ -191,7 +260,7 @@ class Param:
                 if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
                     self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
                     self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
-
+        """
 
         
     def funcGet(self, j):
@@ -202,7 +271,7 @@ class Param:
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 10
-        self.param['production']['minMethanolOpt'] = 10 #113.75 #108.065
+        self.param['production']['minMethanolOpt'] = 20 #113.75 #108.065
         self.param['production']['methanol'] = 0      
         
         
@@ -274,7 +343,7 @@ class Param:
         self.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasIn'] = 6
         self.param['charMap']['CO2CAP']['index']['moleFractionH2Synthesisgas'] = 4
         self.param['charMap']['CO2CAP']['index']['moleFractionCO2Synthesisgas'] = 5
-        self.param['charMap']['CO2CAP']['index']['powerPlantComponentsUnit1'] = 19
+        self.param['charMap']['CO2CAP']['index']['powerPlantComponentsUnit1'] = 22
         self.param['charMap']['CO2CAP']['numVars'] = 9
 
         # Characteristic field indices SYN
@@ -436,7 +505,7 @@ class Param:
         self.param['storageSynthesisgas'] = {}
 
         self.param['storageH2']['Volume'] = 1.7 #* 1.5
-        self.param['storageMethanolWater']['Volume'] = 0.2 #* 1.5
+        self.param['storageMethanolWater']['Volume'] = 0.254 #* 1.5
         self.param['storageSynthesisgas']['Volume'] = 1.7 #* 1.5
 
         self.param['storageH2']['LowerBound'] = 15
@@ -462,10 +531,10 @@ class Param:
 
         ## Start values
         self.param['startValues'] = {}
-        self.param['startValues']['stateCO2CAP'] = 0            # off
-        self.param['startValues']['stateSYN'] = 0               # off
+        self.param['startValues']['stateCO2CAP'] = 3            # off
+        self.param['startValues']['stateSYN'] = 3               # off
         self.param['startValues']['stateDIS'] = 0               # off
-        self.param['startValues']['modeElectrolyser'] = np.ones(self.param['electrolyser']['numberOfEnapterModules']) * 2       # off
+        self.param['startValues']['modeElectrolyser'] = np.ones(self.param['electrolyser']['numberOfEnapterModules']) * 3       # off
         self.param['startValues']['operatingPointCO2CAP'] = 0   # off
         self.param['startValues']['operatingPointSYN'] = 0      # off
         self.param['startValues']['operatingPointDIS'] = 0      # off
@@ -476,11 +545,11 @@ class Param:
         self.param['constraints']['storagesFactorFillEqualLower'] = 0.1
 
         if self.param['controlParameters']['benchmark']:
-            self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
-            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
+            self.param['constraints']['storagesFactorFillEqualLower'] = 0.01
+            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.01
         else:
-            self.param['constraints']['storagesFactorFillEqualLower'] = 0.05
-            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.05
+            self.param['constraints']['storagesFactorFillEqualLower'] = 0.01
+            self.param['constraints']['storagesFactorFillEqualUpper'] = 0.01
 
         self.param['constraints']['methanolWaterStorageFillEqual'] = {}
         self.param['constraints']['methanolWaterStorageEqualValue'] =  self.param['storageMethanolWater']['InitialFilling']
