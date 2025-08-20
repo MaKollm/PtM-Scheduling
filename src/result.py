@@ -313,20 +313,30 @@ class Result():
 
   
         # Example variables
+        vol = self.dictResult['input']['massFlowBiogasIn'][0] / (44.01 * 0.35 + 28.0134 * 0.65) * 1000 * 22.414 / 60
+        carbon_dioxide = 0.35 * vol
+        nitrogen = 0.65 * vol
         biogas = self.dictResult['input']['massFlowBiogasIn'][0] * 100 / 6.91
         hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] * 100 / 0.54
 
-        # Format the data
-        data_text = f"""
-        Volume flow of biogas (FIC-5007): {biogas:.2f} Nl/min
-        Volume flow of hydrogen (FIC-5036): {hydrogen:.2f} Nl/min
-        """
-        
+        elec_mode = []
+        elec_rate = []
+        for n in elec.arrEnapterModules:
+            elec_mode = self.dictResult['input']['electrolyserMode'][(n)][0]
+            elec_rate = self.dictResult['input']['powerElectrolyserRaw'][0,n] / self.param.param['electrolyser']['powerUpperBound'] * 100 * self.dictResult['input']['modeElectrolyserRaw'][0,n,3]
+                
         data = [
+            ("Volume flow of nitrogen (FIC-5014) [Nl/min]:", f"{nitrogen:.2f}"),
+            ("Volume flow of carbon dioxide (FIC-5026) [Nl/min]:", f"{carbon_dioxide:.2f}"),
             ("Volume flow of biogas (FIC-5007) [Nl/min]:", f"{biogas:.2f}"),
-            ("Volume flow of hydrogen (FIC-5036) [Nl/min]", f"{hydrogen:.2f}"),
+            ("Volume flow of hydrogen (FIC-5036) [Nl/min]:", f"{hydrogen:.2f}")
         ]
 
+        for n in elec.arrEnapterModules:
+            data.append(("Mode of Electrolyser " + str(n+1) + ":", elec_mode))
+            data.append(("Production rate [%] of Electrolyser " + str(n+1) + ":", f"{elec_rate:.2f}"))
+
+        print(data)
 
         # Daten anzeigen in zwei Spalten
         for i, (label_text, value_text) in enumerate(data, start=1):
