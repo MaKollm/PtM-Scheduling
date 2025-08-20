@@ -309,6 +309,10 @@ class Optimization_Model:
                 self.m.addConstr(
                     (gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']))   
 
+                if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
+                    self.m.addConstr(
+                            (gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) 
+                            - gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
 
                 """
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
@@ -597,15 +601,15 @@ class Optimization_Model:
             + cm.powerPlantComponentsUnit3[2] * self.OptVarOperationPointDIS[(t,2)] * self.OptVarCurrentStateDIS[(t,2)] * fTimeStep
             + gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
             + cm.powerPlantComponentsUnit3[3] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep
-            for t in self.arrTime[1:]), "Battery output maximum")
+            for t in self.arrTime), "Power balance")
 
         # Power to battery has always to be smaller than power bought
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] <= self.OptVarPowerBought[t] for t in self.arrTime[1:]), "Power to battery has always to be smaller than power bought")
+            (self.OptVarActualPowerInBatteryBought[t] <= self.OptVarPowerBought[t] for t in self.arrTime), "Power to battery has always to be smaller than power bought")
         
         # Power can not be sold and bought at the same time
         self.m.addConstrs(
-            (self.OptVarPowerBought[t] * self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime[1:]), "Power can not be sold and bought at the same time")
+            (self.OptVarPowerBought[t] * self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), "Power can not be sold and bought at the same time")
         
 
         
@@ -669,20 +673,20 @@ class Optimization_Model:
         # Power cannot be sold
         if not self.param.param['controlParameters']['powerSale']:
             self.m.addConstrs(
-                (self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime[1:]), "No power can be sold")
+                (self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), "No power can be sold")
         # Power cannot be bought
         if not self.param.param['controlParameters']['powerPurchase']:
             self.m.addConstrs(
-                (self.OptVarPowerBought[t] == 0 for t in self.arrTime[1:]), "Power can not be bought")
+                (self.OptVarPowerBought[t] == 0 for t in self.arrTime), "Power can not be bought")
         # Peak load capping
         if self.param.param['controlParameters']['peakLoadCapping']:
             self.m.addConstrs(
-                (self.OptVarPowerBought[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime[1:]), "Peak load capping")
+                (self.OptVarPowerBought[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime), "Peak load capping")
             
 
         # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV
         self.m.addConstrs(
-            (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime[1:]), "PV upper bound available")
+            (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime), "PV upper bound available")
         
         #self.m.addConstrs(
         #    (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wind']['powerAvailable'][t] for t in self.arrTime[1:]), "Wind upper bound available")
@@ -717,8 +721,8 @@ class Optimization_Model:
             (self.OptVarCurrentStateCO2CAP[(t,3)] == 1 for t in self.arrTime), "State is always on")
         self.m.addConstrs(
             (self.OptVarCurrentStateSYN[(t,3)] == 1 for t in self.arrTime), "State is always on")
-        #self.m.addConstrs(
-        #    (self.OptVarCurrentStateDIS[(t,3)] == 1 for t in self.arrTime), "State is always on")
+        self.m.addConstrs(
+            (self.OptVarCurrentStateDIS[(t,0)] == 1 for t in self.arrTime), "State is always off")
 
         ## Initial time step constraints
         # No operation point for Synthesis in initial time step

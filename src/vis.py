@@ -127,6 +127,7 @@ def visu(result):
         # Power of electrolyser
         plt.subplot(4,1,1)
         plt.plot(result['input']['powerElectrolyser'])
+        print(result['input']['powerElectrolyser'])
         plt.title('Power electrolyser')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')

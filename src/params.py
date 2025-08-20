@@ -79,16 +79,32 @@ class Param:
         else:
             self.param['storageH2']['InitialPressure'] = float(self.pressure_H2_entry.get())
 
-        self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-        self.param['storageMethanolWater']['InitialFilling'] = 15.09 / 1000 + (np.pi * (0.451 / 2)**2 * float(self.filling_MeOH_entry.get()) / 1000) 
+        filling_MeOH_entry = self.filling_MeOH_entry.get()
+        if filling_MeOH_entry.strip() == "":
+            pass
+        else:
+            self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
+            self.param['storageMethanolWater']['InitialFilling'] = 15.09 / 1000 + (np.pi * (0.451 / 2)**2 * float(self.filling_MeOH_entry.get()) / 1000) 
 
         # Methanol produced 
         methanol_produced = self.methanol_produced_entry.get()
         if methanol_produced.strip() == "":
             pass
+        """
         else:
             for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
-                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_produced_entry.get())
+                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_water_produced_entry.get())
+        
+            self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+            self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
+        """
+
+        methanol_water_produced = self.methanol_water_produced_entry.get()
+        if methanol_water_produced.strip() == "":
+            pass
+        else:
+            for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
+                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_water_produced_entry.get())
         
             self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
             self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
@@ -121,13 +137,17 @@ class Param:
         self.filling_MeOH_entry = tk.Entry(fenster)
         self.filling_MeOH_entry.grid(row=1, column=1)
 
-        tk.Label(fenster, text="Methanol produziert in letzter Stunde [kg]:").grid(row=2, column=0)
+        tk.Label(fenster, text="Methanol-Wasser produziert in letzter Stunde [kg]:").grid(row=2, column=0)
+        self.methanol_water_produced_entry = tk.Entry(fenster)
+        self.methanol_water_produced_entry.grid(row=2, column=1)
+
+        tk.Label(fenster, text="Methanol produziert in letzter Stunde [kg]:").grid(row=3, column=0)
         self.methanol_produced_entry = tk.Entry(fenster)
-        self.methanol_produced_entry.grid(row=2, column=1)
+        self.methanol_produced_entry.grid(row=3, column=1)
 
         # Button zum Speichern
         speichern_button = tk.Button(fenster, text="Speichern", command=lambda: self.speichern(iteration))
-        speichern_button.grid(row=3, column=0, columnspan=2)
+        speichern_button.grid(row=4, column=0, columnspan=2)
 
         
         # GUI starten
@@ -137,9 +157,11 @@ class Param:
         print(self.param['storageH2']['InitialPressure'])
         print(self.param['storageMethanolWater']['InitialFilling'])
         print(self.param['constraints']['methanolWaterStorageEqualValue'])
+        print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
+        print(self.param['controlParameters']['currStartTimeLastOptHorizon'])
         
 
-        """
+        
         if os.path.isfile(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
             with open(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
                 self.param['initialData'] = pickle.load(f)
@@ -238,6 +260,7 @@ class Param:
                         self.param['startValues']['operatingPointDIS'] = j
                         print(j)
 
+                """
                 # Storages
                 self.param['storageH2']['InitialPressure'] = self.param['initialData']["output_Scheduling"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']-1]
                 self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
@@ -260,7 +283,7 @@ class Param:
                 if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
                     self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
                     self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
-        """
+                """
 
         
     def funcGet(self, j):

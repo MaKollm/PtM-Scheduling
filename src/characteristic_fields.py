@@ -192,6 +192,8 @@ class CharMap():
         self.moleFractionCO2SynthesisgasIn = self.arrCharMap[0][self.iIndexMoleFractionCO2SynthesisgasIn]
         self.powerPlantComponentsUnit1 = self.arrCharMap[0][self.iIndexPowerPlantComponentsUnit1]
 
+        print(self.powerPlantComponentsUnit1)
+
         self.massFlowHydrogenInSYN = self.arrCharMap[1][self.iIndexMassFlowHydrogenInSYN]
         self.massFlowSynthesisgasInSYN = self.arrCharMap[1][self.iIndexMassFlowSynthesisgasIn]
         self.massFlowMethanolWaterStorageIn = self.arrCharMap[1][self.iIndexMassFlowMethanolWaterStorageIn]

@@ -17,7 +17,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
-#import matlab.engine
+import sys
+
+sys.path.append(r"C:\PROJEKTE\PTX\Max\22_Adaptation\PtM\src")
+
+from start_all import create_all, run_all
 import time
 
 #####################################
@@ -54,7 +58,7 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant'
+strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc_adapt_simple'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc'
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
@@ -216,48 +220,32 @@ def main(argWorkflow):
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 1
+        numberOfIterations = 10
 
 
         bUseCalcCharMap = False
         bUseDriftCharMap = False
+
+        if useAdaptation:
+            create_all()
         
 
         if scheduleMoreTimes == True:
             for i in range(0, numberOfIterations):           
                 dataOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults)  
-                results.append(copy.deepcopy(dataOpt.dictResult))      
+                results.append(copy.deepcopy(dataOpt.dictResult))    
+
+                if useAdaptation:
+                    run_all(i)
+                    
         else:
             dataOpt, param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,0], param, cm, cmCalc, cmDrift, elec, pv, wt, pp, ci, optModel, checkResults)
 
         createGif(results)
 
-        startDrift = 10
-        endDrift = 15
-        startCalculation = 5
-
-        if useAdaptation == True:
-            path = r'C:\PROJEKTE\PTX\Max\22_Adaptation\src'
-            pathParam = r'C:\PROJEKTE\PTX\Max\22_Adaptation\param.mat'
-            """
-            eng = matlab.engine.start_matlab()
-            eng.addpath(path)
-            eng.createInstances(nargout=0)
-
-            for i in range(1,numberOfIterations):
-
-                eng.setup(i, startCalculation, startDrift, endDrift, pathParam, nargout=0)
-
-                dataOpt, param, cm, cmCalc, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization(argWorkflow, param, cm, cmCalc, elec, pv, pp, ci, optModel, checkResults)
-        
-                if i >= startCalculation:
-                    bUseCalcCharMap = True
-
-                if i >= startDrift:
-                    bUseDriftCharMap = True
-                
-                dataOpt, param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults = funcStartOptimization([bUseCalcCharMap,bUseDriftCharMap,i], param, cm, cmCalc, cmDrift, elec, pv, pp, ci, optModel, checkResults)
-            """
+        #startDrift = 10
+        #endDrift = 15
+        #startCalculation = 5
 
     return dataOpt
     

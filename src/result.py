@@ -319,12 +319,12 @@ class Result():
         # Format the data
         data_text = f"""
         Volume flow of biogas (FIC-5007): {biogas:.2f} Nl/min
-        Volume flow of hydrogen (FIC-XXXX): {hydrogen:.2f} Nl/min
+        Volume flow of hydrogen (FIC-5036): {hydrogen:.2f} Nl/min
         """
         
         data = [
             ("Volume flow of biogas (FIC-5007) [Nl/min]:", f"{biogas:.2f}"),
-            ("Volume flow of hydrogen (FIC-XXXX) [Nl/min]", f"{hydrogen:.2f}"),
+            ("Volume flow of hydrogen (FIC-5036) [Nl/min]", f"{hydrogen:.2f}"),
         ]
 
 
@@ -343,17 +343,17 @@ class Result():
         ########## Input ##########
         print('Input variables')
         print('')
-        #for key in self.dictResult['input']:
-        #        print(key)
-        #        print(self.dictResult['input'][key])
-        #        print('----------')
+        for key in self.dictResult['input']:
+                print(key)
+                print(self.dictResult['input'][key])
+                print('----------')
 
         ########## Output ###########
         print('Output variables')
         print('')
-        #for key in self.dictResult['output_Scheduling']:
-        #    print(key + ': ', self.dictResult['output_Scheduling'][key]) 
-        #    print('----------')
+        for key in self.dictResult['output_Scheduling']:
+            print(key + ': ', self.dictResult['output_Scheduling'][key]) 
+            print('----------')
 
         print('#########')
         print('')
@@ -399,10 +399,12 @@ class Result():
         print('Production')
         print('')
         print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut']))
+        print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolWaterStorageIn']))
         print('Methan: ' , np.sum(self.dictResult['output_Scheduling']['massFlowBiogasOut']))
 
         print('')
-        print('Methanol in last 24h: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut'][1:self.param.param['controlParameters']['numTimeStepsToSimulate']+1]))
+        print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
+        print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolWaterStorageIn'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
         print('')
         print('##########')
 
