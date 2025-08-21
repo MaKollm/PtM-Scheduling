@@ -190,7 +190,7 @@ class Optimization_Model:
         
         if self.param.param['controlParameters']['objectiveFunction'] == 3:
             self.m.setObjective(0 
-                + gp.quicksum(-cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for t in self.arrTime for j in cm.arrOperationPointsDIS))
+                + gp.quicksum(-cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for t in self.arrTime for j in cm.arrOperationPointsDIS))
         
 
     ########## Extract information from adaptation ##########
@@ -215,7 +215,7 @@ class Optimization_Model:
         if self.param.param['controlParameters']['benchmark'] == True:
             # Minimum amount of methanol which has to be produced
             self.m.addConstr(
-                (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
+                (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
             
 
             self.m.addConstr(
@@ -307,29 +307,30 @@ class Optimization_Model:
             if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
 
                 self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']))   
+                    (gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']))   
 
+                print(self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval'])
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
                     self.m.addConstr(
-                            (gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) 
-                            - gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
+                        (gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) 
+                        - gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
 
                 """
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
                     self.m.addConstr(
-                        (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) 
-                        - gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
+                        (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) 
+                        - gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
                 
                 self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']), "Minimum amount methanol produced 2")     
+                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']), "Minimum amount methanol produced 2")     
             
                 """
 
             else:
                 self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
+                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
                 self.m.addConstr(
-                    (gp.quicksum(cm.massFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['methanol']), "Amount methanol produced is same as benchmark lower bound")    
+                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['methanol']), "Amount methanol produced is same as benchmark lower bound")    
 
 
 
@@ -825,11 +826,11 @@ class Optimization_Model:
         # Precompute constant terms
 
             # Calculate intermediate expressions
-            methanol_water_mass_flow_in = methanol_water_mass_flow_in + (cm.massFlowMethanolWaterStorageIn[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep
-                                                                        + cm.massFlowMethanolWaterStorageIn[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep
-                                                                        + cm.massFlowMethanolWaterStorageIn[(2)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep
-                                                                        + gp.quicksum(cm.massFlowMethanolWaterStorageIn[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
-                                                                        + cm.massFlowMethanolWaterStorageIn[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep)
+            methanol_water_mass_flow_in = methanol_water_mass_flow_in + (cm.volFlowMethanolWaterStorageIn[(0)] / 1000 * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep
+                                                                        + cm.volFlowMethanolWaterStorageIn[(1)] / 1000 * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep
+                                                                        + cm.volFlowMethanolWaterStorageIn[(2)] / 1000 * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep
+                                                                        + gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] / 1000 * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
+                                                                        + cm.volFlowMethanolWaterStorageIn[(3)] / 1000 * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep)
             
             methanol_water_mass_flow_out = methanol_water_mass_flow_out + (cm.massFlowMethanolWaterStorageOut[(0)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,0)] * self.OptVarCurrentStateDIS[(t,0)] * fTimeStep
                                                                         + cm.massFlowMethanolWaterStorageOut[(1)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,1)] * self.OptVarCurrentStateDIS[(t,1)] * fTimeStep

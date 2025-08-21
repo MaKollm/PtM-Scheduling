@@ -313,11 +313,11 @@ class Result():
 
   
         # Example variables
-        vol = self.dictResult['input']['massFlowBiogasIn'][0] / (44.01 * 0.35 + 28.0134 * 0.65) * 1000 * 22.414 / 60
+        vol = self.dictResult['input']['massFlowBiogasIn'][0] / (44.01 * 0.35 + 28.013 * 0.65) * 1000 * 22.414 / 60
         carbon_dioxide = 0.35 * vol
         nitrogen = 0.65 * vol
         biogas = self.dictResult['input']['massFlowBiogasIn'][0] * 100 / 6.91
-        hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] * 100 / 0.54
+        hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] * 100 * 2.016
 
         elec_mode = []
         elec_rate = []
@@ -335,8 +335,6 @@ class Result():
         for n in elec.arrEnapterModules:
             data.append(("Mode of Electrolyser " + str(n+1) + ":", elec_mode))
             data.append(("Production rate [%] of Electrolyser " + str(n+1) + ":", f"{elec_rate:.2f}"))
-
-        print(data)
 
         # Daten anzeigen in zwei Spalten
         for i, (label_text, value_text) in enumerate(data, start=1):
@@ -408,13 +406,13 @@ class Result():
 
         print('Production')
         print('')
-        print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut']))
-        print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolWaterStorageIn']))
+        print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut']))
+        print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolWaterStorageIn']))
         print('Methan: ' , np.sum(self.dictResult['output_Scheduling']['massFlowBiogasOut']))
 
         print('')
-        print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolOut'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
-        print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['massFlowMethanolWaterStorageIn'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
+        print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
+        print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolWaterStorageIn'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
         print('')
         print('##########')
 

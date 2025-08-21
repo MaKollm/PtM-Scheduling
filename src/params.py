@@ -105,7 +105,7 @@ class Param:
         else:
             for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
                 self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_water_produced_entry.get())
-        
+
             self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
             self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
         
@@ -118,6 +118,7 @@ class Param:
             self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
             self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
 
+        self.fenster.destroy()
 
 
 
@@ -125,33 +126,33 @@ class Param:
         
         
         # Fenster erstellen
-        fenster = tk.Tk()
-        fenster.title("Daten zum Eingeben:")
+        self.fenster = tk.Tk()
+        self.fenster.title("Input Data:")
 
         # Labels und Eingabefelder
-        tk.Label(fenster, text="Druck des Wasserstofftanks [bar]:").grid(row=0, column=0)
-        self.pressure_H2_entry = tk.Entry(fenster)
+        tk.Label(self.fenster, text="Hydrogen storage pressure [bar]:").grid(row=0, column=0)
+        self.pressure_H2_entry = tk.Entry(self.fenster)
         self.pressure_H2_entry.grid(row=0, column=1)
 
-        tk.Label(fenster, text="Füllstand Methanol-Wasser Tank [mm]:").grid(row=1, column=0)
-        self.filling_MeOH_entry = tk.Entry(fenster)
+        tk.Label(self.fenster, text="Filling level methanol water storage [mm]:").grid(row=1, column=0)
+        self.filling_MeOH_entry = tk.Entry(self.fenster)
         self.filling_MeOH_entry.grid(row=1, column=1)
 
-        tk.Label(fenster, text="Methanol-Wasser produziert in letzter Stunde [kg]:").grid(row=2, column=0)
-        self.methanol_water_produced_entry = tk.Entry(fenster)
+        tk.Label(self.fenster, text="Produced methanol water last hour [Liter]:").grid(row=2, column=0)
+        self.methanol_water_produced_entry = tk.Entry(self.fenster)
         self.methanol_water_produced_entry.grid(row=2, column=1)
 
-        tk.Label(fenster, text="Methanol produziert in letzter Stunde [kg]:").grid(row=3, column=0)
-        self.methanol_produced_entry = tk.Entry(fenster)
+        tk.Label(self.fenster, text="Produced methanol last hour [Liter]:").grid(row=3, column=0)
+        self.methanol_produced_entry = tk.Entry(self.fenster)
         self.methanol_produced_entry.grid(row=3, column=1)
 
         # Button zum Speichern
-        speichern_button = tk.Button(fenster, text="Speichern", command=lambda: self.speichern(iteration))
+        speichern_button = tk.Button(self.fenster, text="Save", command=lambda: self.speichern(iteration))
         speichern_button.grid(row=4, column=0, columnspan=2)
 
         
         # GUI starten
-        fenster.mainloop()
+        self.fenster.mainloop()
 
 
         print(self.param['storageH2']['InitialPressure'])
@@ -260,6 +261,9 @@ class Param:
                         self.param['startValues']['operatingPointDIS'] = j
                         print(j)
 
+                self.param['storageH2']['InitialPressure'] = self.param['initialData']["output_Scheduling"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']-1]
+                self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
+
                 """
                 # Storages
                 self.param['storageH2']['InitialPressure'] = self.param['initialData']["output_Scheduling"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']-1]
@@ -284,7 +288,7 @@ class Param:
                     self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
                     self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
                 """
-
+        print(self.param['storageH2']['InitialPressure'])
         
     def funcGet(self, j):
 
@@ -375,20 +379,22 @@ class Param:
         self.param['charMap']['SYN']['index']['massFlowSynthesisgasIn'] = 2
         self.param['charMap']['SYN']['index']['massFlowHydrogenIn'] = 3
         self.param['charMap']['SYN']['index']['massFlowMethanolWaterStorageIn'] = 5
+        self.param['charMap']['SYN']['index']['volFlowMethanolWaterStorageIn'] = 6
         self.param['charMap']['SYN']['index']['densityMethanolWaterStorageIn'] = 4
-        self.param['charMap']['SYN']['index']['massFlowSynthesisPurge'] = 7
-        self.param['charMap']['SYN']['index']['moleFractionCO2SynthesisPurge'] = 6
-        self.param['charMap']['SYN']['index']['powerPlantComponentsUnit2'] = 20
-        self.param['charMap']['SYN']['numVars'] = 7
+        self.param['charMap']['SYN']['index']['massFlowSynthesisPurge'] = 8
+        self.param['charMap']['SYN']['index']['moleFractionCO2SynthesisPurge'] = 7
+        self.param['charMap']['SYN']['index']['powerPlantComponentsUnit2'] = 21
+        self.param['charMap']['SYN']['numVars'] = 8
 
         # Characteristic field indices DIS
         self.param['charMap']['DIS'] = {}
         self.param['charMap']['DIS']['index'] = {}
         self.param['charMap']['DIS']['index']['massFlowMethanolWaterStorageOut'] = 2
         self.param['charMap']['DIS']['index']['massFlowMethanolOut'] = 5
-        self.param['charMap']['DIS']['index']['moleFractionMethanolOut'] = 18
-        self.param['charMap']['DIS']['index']['powerPlantComponentsUnit3'] = 17
-        self.param['charMap']['DIS']['numVars'] = 4
+        self.param['charMap']['DIS']['index']['volFlowMethanolOut'] = 6
+        self.param['charMap']['DIS']['index']['moleFractionMethanolOut'] = 19
+        self.param['charMap']['DIS']['index']['powerPlantComponentsUnit3'] = 18
+        self.param['charMap']['DIS']['numVars'] = 5
 
 
 

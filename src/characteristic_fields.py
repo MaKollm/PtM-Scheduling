@@ -31,6 +31,7 @@ class CharMap():
         self.iIndexMassFlowSynthesisgasIn = self.param.param['charMap']['SYN']['index']['massFlowSynthesisgasIn']
         self.iIndexMassFlowHydrogenInSYN = self.param.param['charMap']['SYN']['index']['massFlowHydrogenIn']
         self.iIndexMassFlowMethanolWaterStorageIn = self.param.param['charMap']['SYN']['index']['massFlowMethanolWaterStorageIn']
+        self.iIndexVolFlowMethanolWaterStorageIn = self.param.param['charMap']['SYN']['index']['volFlowMethanolWaterStorageIn']
         self.iIndexDensityMethanolWaterStorageIn = self.param.param['charMap']['SYN']['index']['densityMethanolWaterStorageIn']
         self.iIndexMassFlowSynthesisPurge = self.param.param['charMap']['SYN']['index']['massFlowSynthesisPurge']
         self.iIndexMoleFractionCO2SynthesisPurge = self.param.param['charMap']['SYN']['index']['moleFractionCO2SynthesisPurge']
@@ -40,6 +41,7 @@ class CharMap():
         # Distillation
         self.iIndexMassFlowMethanolWaterStorageOut =  self.param.param['charMap']['DIS']['index']['massFlowMethanolWaterStorageOut']
         self.iIndexMassFlowMethanolOut =  self.param.param['charMap']['DIS']['index']['massFlowMethanolOut']
+        self.iIndexVolFlowMethanolOut =  self.param.param['charMap']['DIS']['index']['volFlowMethanolOut']
         self.iIndexMoleFractionMethanolOut = self.param.param['charMap']['DIS']['index']['moleFractionMethanolOut']
         self.iIndexPowerPlantComponentsUnit3 =  self.param.param['charMap']['DIS']['index']['powerPlantComponentsUnit3']
     
@@ -192,11 +194,11 @@ class CharMap():
         self.moleFractionCO2SynthesisgasIn = self.arrCharMap[0][self.iIndexMoleFractionCO2SynthesisgasIn]
         self.powerPlantComponentsUnit1 = self.arrCharMap[0][self.iIndexPowerPlantComponentsUnit1]
 
-        print(self.powerPlantComponentsUnit1)
-
         self.massFlowHydrogenInSYN = self.arrCharMap[1][self.iIndexMassFlowHydrogenInSYN]
         self.massFlowSynthesisgasInSYN = self.arrCharMap[1][self.iIndexMassFlowSynthesisgasIn]
         self.massFlowMethanolWaterStorageIn = self.arrCharMap[1][self.iIndexMassFlowMethanolWaterStorageIn]
+        self.volFlowMethanolWaterStorageIn = self.arrCharMap[1][self.iIndexVolFlowMethanolWaterStorageIn]
+
         self.densityMethanolWaterStorageIn = self.arrCharMap[1][self.iIndexDensityMethanolWaterStorageIn]
         self.massFlowSynthesisPurge = self.arrCharMap[1][self.iIndexMassFlowSynthesisPurge]
         self.moleFractionCO2SynthesisPurge = self.arrCharMap[1][self.iIndexMoleFractionCO2SynthesisPurge]
@@ -204,6 +206,7 @@ class CharMap():
 
         self.massFlowMethanolWaterStorageOut = self.arrCharMap[2][self.iIndexMassFlowMethanolWaterStorageOut]  
         self.massFlowMethanolOut = self.arrCharMap[2][self.iIndexMassFlowMethanolOut] 
+        self.volFlowMethanolOut = self.arrCharMap[2][self.iIndexVolFlowMethanolOut] 
         self.moleFractionMethanolOut = self.arrCharMap[2][self.iIndexMoleFractionMethanolOut]
         self.powerPlantComponentsUnit3 = self.arrCharMap[2][self.iIndexPowerPlantComponentsUnit3]
 
