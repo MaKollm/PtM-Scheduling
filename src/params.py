@@ -115,7 +115,9 @@ class Param:
         self.param['constraints']['batteryChargeEqualTime'] = self.param['controlParameters']['numTimeStepsToHorizonEnd'] - 1
 
         if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
-            self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
+            if iteration > 0:
+                self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
+
             self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
 
         self.fenster.destroy()
@@ -297,8 +299,8 @@ class Param:
 
         # Production constants
         self.param['production'] = {}
-        self.param['production']['minMethanolBenchmark'] = 10
-        self.param['production']['minMethanolOpt'] = 20 #113.75 #108.065
+        self.param['production']['minMethanolBenchmark'] = 15
+        self.param['production']['minMethanolOpt'] = 15 #113.75 #108.065
         self.param['production']['methanol'] = 0      
         
         

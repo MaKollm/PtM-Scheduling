@@ -64,12 +64,12 @@ class Result():
                     
             solution = optModel.m.getAttr('X', optModel.OptVarOperationPointDIS)
             self.dictResult['input']['operationPoint_DIS'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsDIS)))
-            self.dictResult['input']['massFlowMethanolWaterStorage'] = []
+            self.dictResult['input']['volFlowMethanolWaterStorage'] = []
             for i in self.arrTime:
                 for j in cm.arrOperationPointsDIS:
                     self.dictResult['input']['operationPoint_DIS'][i,j] = solution[i,j]
                     if int(solution[i,j]) == 1:
-                        self.dictResult['input']['massFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
+                        self.dictResult['input']['volFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
 
 
             solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateCO2CAP)
@@ -314,10 +314,11 @@ class Result():
   
         # Example variables
         vol = self.dictResult['input']['massFlowBiogasIn'][0] / (44.01 * 0.35 + 28.013 * 0.65) * 1000 * 22.414 / 60
-        carbon_dioxide = 0.35 * vol
-        nitrogen = 0.65 * vol
-        biogas = self.dictResult['input']['massFlowBiogasIn'][0] * 100 / 6.91
-        hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] * 100 * 2.016
+        carbon_dioxide = 0#0.35 * vol
+        nitrogen = 0#0.65 * vol
+        biogas = self.dictResult['input']['massFlowBiogasIn'][0] / (44.01 * 0.35 + 16.04 * 0.65) * 1000 * 22.414 / 60
+        hydrogen = self.dictResult['input']['massFlowHydrogenIn'][0] / 2.016 * 1000 * 22.414 / 60
+
 
         elec_mode = []
         elec_rate = []
@@ -459,6 +460,6 @@ class Result():
         ###################################
         ########## Visualization ########## 
 
-        visu(self.dictResult)
+        #visu(self.dictResult)
         pass
     

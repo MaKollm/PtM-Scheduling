@@ -71,7 +71,7 @@ def visu(result):
 
         # Operating point of Distillation
         plt.subplot(2,3,6)
-        plt.plot(result['input']['massFlowMethanolWaterStorage'])
+        plt.plot(result['input']['volFlowMethanolWaterStorage'])
         plt.title('Operating point of the Distillation')
         plt.xlabel('time in h')
         plt.ylabel('operating point')
@@ -221,14 +221,19 @@ def createGif(results):
         H2Pressure_Sim = []
         massFlowMethanolOut_Scheduling = []
         massFlowMethanolOut_Sim = []
+        massFlowMethanolWater_Scheduling = []
+        massFlowMethanolWater_Sim = []
 
         for result in results:
                 H2Pressure_Scheduling.append([result['param']['storageH2']['InitialPressure']] + result['output_Scheduling']['storageH2Pressure'])
                 H2Pressure_Sim.append([result['param']['storageH2']['InitialPressure']] + result['output_Sim']['storageH2Pressure'])
 
-                massFlowMethanolOut_Scheduling.append(result['output_Scheduling']['massFlowMethanolOut'])
-                massFlowMethanolOut_Sim.append(result['output_Sim']['massFlowMethanolOut'])
+                massFlowMethanolOut_Scheduling.append(result['output_Scheduling']['volFlowMethanolOut'])
+                massFlowMethanolOut_Sim.append(result['output_Sim']['volFlowMethanolOut'])
 
+                massFlowMethanolWater_Scheduling.append(result['output_Scheduling']['volFlowMethanolWaterStorageIn'])
+                massFlowMethanolWater_Sim.append(result['output_Sim']['volFlowMethanolWaterStorageIn'])
+      
 
 
         #if not os.path.exists(r'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v3\frames'):
@@ -248,6 +253,7 @@ def createGif(results):
                 for i in range(0,idx):
                         x_sim = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*(i+1) + 1))
                         x_sched = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*i + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+
                         if i == 0:
                                 ax.plot(x_sim,H2Pressure_Sim[i], 'k-', label='Measured H2 pressure')
                                 ax.plot(x_sched,H2Pressure_Scheduling[i], 'b--', alpha=0.5, label='Old prediction H2 pressure')
@@ -281,9 +287,63 @@ def createGif(results):
                 plt.show()
 
 
+                ########## Methanol water produced ##########
+                x_full = list(range(0,result['param']['controlParameters']['numTimeStepsToSimulate']*idx + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+                fig, ax = plt.subplots()         
+
+                x_sched = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*idx,result['param']['controlParameters']['numTimeStepsToSimulate']*idx + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+                x_sched_double = [x_sched[0]] + [x for x in x_sched[1:-1] for _ in (0, 1)] + [x_sched[-1]]
+                massFlowMethanolWater_Scheduling_double = [x for x in massFlowMethanolWater_Scheduling[idx] for _ in (0, 1)]
+                plt.plot(x_sched_double,massFlowMethanolWater_Scheduling_double, label='Prediction methanol output')
+
+                for i in range(0,idx):
+                        x_sim = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*(i+1) + 1))
+                        x_sim_double = [x_sim[0]] + [x for x in x_sim[1:-1] for _ in (0, 1)] + [x_sim[-1]]
+                        x_sched = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*i + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+                        x_sched_double = [x_sched[0]] + [x for x in x_sched[1:-1] for _ in (0, 1)] + [x_sched[-1]]
+                        massFlowMethanolWater_Sim_double = [x for x in massFlowMethanolWater_Sim[i] for _ in (0, 1)]
+                        massFlowMethanolWater_Scheduling_double = [x for x in massFlowMethanolWater_Scheduling[i] for _ in (0, 1)]
+
+                        if i == 0:
+                                ax.plot(x_sim_double,massFlowMethanolWater_Sim_double, 'k-', label='Measured methanol output')
+                                ax.plot(x_sched_double,massFlowMethanolWater_Scheduling_double, 'b--', alpha=0.5, label='Old prediction methanol output')
+                        else:
+                                ax.plot(x_sim_double,massFlowMethanolWater_Sim_double, 'k-', label='_nolegend_')
+                                ax.plot(x_sched_double,massFlowMethanolWater_Scheduling_double, 'b--', alpha=0.5, label='_nolegend_')
+                                
+                
+                plt.axvline(result['param']['controlParameters']['numTimeStepsToSimulate']*idx, color='k', linestyle='--')
+
+                plt.legend()
+                plt.savefig(f"frame2_{(idx*2)}.png")
+                plt.show()
+
+
+                x_full = list(range(0,result['param']['controlParameters']['numTimeStepsToSimulate']*idx + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+                fig, ax = plt.subplots()        
+                for i in range(0,idx+1):
+                        x_sim = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*(i+1) + 1))
+                        x_sim_double = [x_sim[0]] + [x for x in x_sim[1:-1] for _ in (0, 1)] + [x_sim[-1]]
+                        massFlowMethanolWater_Sim_double = [x for x in massFlowMethanolWater_Sim[i] for _ in (0, 1)]
+                        print(x_sim_double)
+                        print(massFlowMethanolWater_Sim_double)
+                        if i == 0:
+                                ax.plot(x_sim_double,massFlowMethanolWater_Sim_double, 'k-', label='Measured methanol output')
+                        else:
+                                ax.plot(x_sim_double,massFlowMethanolWater_Sim_double, 'k-', label='_nolegend_')
+
+                x_sched = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*idx,result['param']['controlParameters']['numTimeStepsToSimulate']*idx + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
+                x_sched_double = [x_sched[0]] + [x for x in x_sched[1:-1] for _ in (0, 1)] + [x_sched[-1]]
+                massFlowMethanolWater_Scheduling_double = [x for x in massFlowMethanolWater_Scheduling[idx] for _ in (0, 1)]
+                ax.plot(x_sched_double,massFlowMethanolWater_Scheduling_double, 'b--', alpha=0.5, label='Old prediction methanol output')
+                plt.axvline(result['param']['controlParameters']['numTimeStepsToSimulate']*(idx+1), color='k', linestyle='--')
+                plt.legend()
+                plt.savefig(f"frame2_{(idx*2)+1}.png")
+                plt.show()
+
                 """
                 ########## Methanol produced ##########
-                input("Press Enter to continue")
+                x_full = list(range(0,result['param']['controlParameters']['numTimeStepsToSimulate']*idx + result['param']['controlParameters']['numberOfTimeSteps'] + 1))
                 fig, ax = plt.subplots()         
                 for i in range(0,idx):
                         x_sim = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*(i+1) + 1))
@@ -306,7 +366,7 @@ def createGif(results):
                 plt.show()
                 #plt.savefig(f'plot_{idx}_added.png')
 
-                input("Press Enter to continue")
+
                 fig, ax = plt.subplots()        
                 for i in range(0,idx+1):
                         x_sim = list(range(result['param']['controlParameters']['numTimeStepsToSimulate']*i,result['param']['controlParameters']['numTimeStepsToSimulate']*(i+1) + 1))
@@ -326,7 +386,11 @@ def createGif(results):
 
         # GIF erstellen
         images = [imageio.imread(f"frame_{i}.png") for i in range(len(results)*2)]
-        imageio.mimsave('animation.gif', images, duration=2)
+        imageio.mimsave('h2_pressure.gif', images, duration=2)
+
+        # GIF erstellen
+        images = [imageio.imread(f"frame2_{i}.png") for i in range(len(results)*2)]
+        imageio.mimsave('methanol_water.gif', images, duration=2)
 
 
 #load_and_visu()

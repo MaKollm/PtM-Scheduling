@@ -58,7 +58,7 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant'
+strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc_adapt_simple'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc'
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
@@ -220,7 +220,7 @@ def main(argWorkflow):
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 10
+        numberOfIterations = 30
 
 
         bUseCalcCharMap = False
