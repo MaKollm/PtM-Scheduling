@@ -33,7 +33,6 @@ class CarbonIntensity():
 
         self.arrCarbonIntensityHourlyAll = self.DataFrameEnergyCharts["Carbon Intensity gCO₂eq/kWh (direct)"].to_numpy()
 
-    #trims arrPowerPriceHourlyAll to depending on start_time and numHoursToSimulate, saves trimmed array as arrPowerPriceHourly
     def funcUpdateCSV(self, param):
         start = self.param.param["controlParameters"]["startTimeIteration"]
         end = start + pd.Timedelta(hours = self.param.param["controlParameters"]["optimizationHorizon"] - 1)
@@ -44,6 +43,9 @@ class CarbonIntensity():
         self.iStop  = index.searchsorted(end, side="right")
 
         self.arrCarbonIntensityHourly = self.arrCarbonIntensityHourlyAll[self.iStart:self.iStop]
+
+        ## Repeat carbon intensity depending on time step
+        self.arrCarbonIntensityHourly = [x for x in self.arrCarbonIntensityHourly for _ in range(int(1 / self.param.param['controlParameters']['timeStep']))]
 
 
     def funcAddUncertainty(self):

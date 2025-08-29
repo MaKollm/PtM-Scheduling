@@ -43,6 +43,7 @@ class Optimization_Model:
         if self.param.param['controlParameters']['testFeasibility'] == True:
             self.m.computeIIS()
             self.m.write("model.ilp")
+
         self.m.optimize()
 
 
@@ -93,13 +94,13 @@ class Optimization_Model:
                     self.OptVarUsageOfPV[t].Start = self.param.param['initialData']['input']['usageOfPV'][t]       
                     self.OptVarPowerInBatteryPV[t].Start = self.param.param['initialData']['input']['powerInBatteryPV'][t]
 
-                    self.OptVarPowerInBatteryBought[t].Start = self.param.param['initialData']['input']['powerInBatteryBought'][t]
+                    self.OptVarPowerInBatteryGrid[t].Start = self.param.param['initialData']['input']['powerInBatteryGrid'][t]
                     self.OptVarPowerOutBattery[t].Start = self.param.param['initialData']['input']['powerOutBattery'][t]
                     self.OptVarPowerOutBatterySold[t].Start = self.param.param['initialData']['input']['powerOutBatterySold'][t]
-                    self.OptVarPowerBought[t].Start = self.param.param['initialData']['input']['powerBought'][t]
+                    self.OptVarPowerGrid[t].Start = self.param.param['initialData']['input']['powerGrid'][t]
         
                     self.OptVarActualPowerInBatteryPV[t].Start = self.param.param['initialData']['input']['actualPowerInBatteryPV'][t]
-                    self.OptVarActualPowerInBatteryBought[t].Start = self.param.param['initialData']['input']['actualPowerInBatteryBought'][t]
+                    self.OptVarActualPowerInBatteryGrid[t].Start = self.param.param['initialData']['input']['actualPowerInBatteryGrid'][t]
                     self.OptVarActualPowerOutBattery[t].Start = self.param.param['initialData']['input']['actualPowerOutBattery'][t]
                     self.OptVarActualPowerOutBatterySold[t].Start = self.param.param['initialData']['input']['actualPowerOutBatterySold'][t]
 
@@ -135,6 +136,9 @@ class Optimization_Model:
         self.OptVarCurrentStateCO2CAP = self.m.addVars(self.arrTime,[0,1,2,3,4], vtype=GRB.BINARY)
         self.OptVarCurrentStateSYN = self.m.addVars(self.arrTime,[0,1,2,3,4], vtype=GRB.BINARY)
         self.OptVarCurrentStateDIS = self.m.addVars(self.arrTime,[0,1,2,3,4], vtype=GRB.BINARY)
+
+        #self.OptVarActiveCO2CAP = self.m.addVars(self.arrTime,cm.arrOperationPointsCO2CAP, [0,1,2,3,4], vtype=GRB.BINARY)
+
         self.OptVarCurrentStateSwitchCO2CAP = self.m.addVars(self.arrTime,[0,1,2,3,4],[0,1,2,3,4],vtype=GRB.BINARY)
         self.OptVarCurrentStateSwitchSYN = self.m.addVars(self.arrTime,[0,1,2,3,4],[0,1,2,3,4],vtype=GRB.BINARY)
         self.OptVarCurrentStateSwitchDIS = self.m.addVars(self.arrTime,[0,1,2,3,4],[0,1,2,3,4],vtype=GRB.BINARY)
@@ -149,13 +153,13 @@ class Optimization_Model:
 
         self.OptVarPowerInBatteryPV = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerInBatteryWind = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
-        self.OptVarPowerInBatteryBought = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
+        self.OptVarPowerInBatteryGrid = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minChargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerOutBattery = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minDischargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarPowerOutBatterySold = self.m.addVars(self.arrTime,lb=self.param.param['battery']['minDischargeRate'],ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
         self.OptVarActualPowerInBatteryPV = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerInBatteryWind = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
-        self.OptVarActualPowerInBatteryBought = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
+        self.OptVarActualPowerInBatteryGrid = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerOutBattery = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
         self.OptVarActualPowerOutBatterySold = self.m.addVars(self.arrTime,lb=0,ub=GRB.INFINITY, vtype=GRB.CONTINUOUS)
 
@@ -167,7 +171,7 @@ class Optimization_Model:
 
         self.OptVarIndicatorBatteryCharging3 = self.m.addVars(self.arrTime,vtype=GRB.BINARY)
 
-        self.OptVarPowerBought = self.m.addVars(self.arrTime,lb=0.0,ub=100,vtype=GRB.CONTINUOUS)
+        self.OptVarPowerGrid = self.m.addVars(self.arrTime,lb=0.0,ub=100,vtype=GRB.CONTINUOUS)
 
         # Variable for benchmark
         self.OptVarUsedOperationPointCO2CAP = self.m.addVars(cm.arrOperationPointsCO2CAP[4:], vtype=GRB.BINARY)
@@ -176,17 +180,18 @@ class Optimization_Model:
         self.OptVarUsedOperationPointElectrolyser = self.m.addVars(self.param.param['electrolyser']['numberOfEnapterModules'],lb=self.param.param['electrolyser']['powerLowerBound'], ub=self.param.param['electrolyser']['powerUpperBound'],vtype=GRB.CONTINUOUS)
         
 
+
     ########## Cost function ##########
     def funcCreateCostFunction(self, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
         if self.param.param['controlParameters']['objectiveFunction'] == 1:
             self.m.setObjective(0 
-                + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerBought[i] for i in self.arrTime))
+                + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerGrid[i] for i in self.arrTime))
 
         if self.param.param['controlParameters']['objectiveFunction'] == 2:
             self.m.setObjective(0
-            + gp.quicksum(self.param.param['carbonIntensity']['carbonIntensity'][i] * self.OptVarPowerBought[i] / 1000  * fTimeStep for i in self.arrTime))
+            + gp.quicksum(self.param.param['carbonIntensity']['carbonIntensity'][i] * self.OptVarPowerGrid[i] / 1000  * fTimeStep for i in self.arrTime))
         
         if self.param.param['controlParameters']['objectiveFunction'] == 3:
             self.m.setObjective(0 
@@ -201,8 +206,6 @@ class Optimization_Model:
     ########## Check for feasibility of operation points ##########
     def funcCheckForFeasibility(self, operationPoint, idxCharMap):
         bIsFeasible = False
-            
-
         return bIsFeasible 
 
 
@@ -210,28 +213,47 @@ class Optimization_Model:
     def funcCreateConstraints(self, cm, elec, pv, wt, pp, ci):
         fTimeStep = self.param.param['controlParameters']['timeStep']
 
+
+
+        ## Production rate
+        # Methanol water
+        
+        T = 0.3
+        alpha = np.min([1,fTimeStep / T])
+        volFlowMethanolWater = list(range(0, len(self.arrTime)))
+        producedMethanolWater = list(range(0, len(self.arrTime)))
+        volFlowMethanolWater[0] = gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(0,j)] for j in cm.arrOperationPointsSYN)
+        producedMethanolWater[0] = volFlowMethanolWater[0]
+        for t in self.arrTime[:-1]:
+            volFlowMethanolWater[t+1] = (1 - alpha) * volFlowMethanolWater[t] + alpha * (gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] for j in cm.arrOperationPointsSYN[4:]))
+            producedMethanolWater[t+1] = (volFlowMethanolWater[t+1] + volFlowMethanolWater[t]) * fTimeStep / 2 
+        
+
+        # Auxilary variable active state and operating point
+
+
           
-                
+        ## Benchmark  
         if self.param.param['controlParameters']['benchmark'] == True:
             # Minimum amount of methanol which has to be produced
             self.m.addConstr(
-                (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
+                (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['minMethanolBenchmark']), "Minimum amount methanol produced benchmark")
             
 
             self.m.addConstr(
                 (gp.quicksum(self.OptVarUsedOperationPointCO2CAP[j] for j in cm.arrOperationPointsCO2CAP[4:]) == 1), "Benchmark operation point CO2-Capture 3_1")
             self.m.addConstrs(
-                (self.OptVarOperationPointCO2CAP[(t,j)] == self.OptVarCurrentStateCO2CAP[(t,3)] * self.OptVarUsedOperationPointCO2CAP[j] for t in self.arrTime for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3_2")
+                (self.OptVarOperationPointCO2CAP[(t,j)] == self.OptVarUsedOperationPointCO2CAP[j] for t in self.arrTime for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3_2")
 
             self.m.addConstr(
                 (gp.quicksum(self.OptVarUsedOperationPointSYN[j] for j in cm.arrOperationPointsSYN[4:]) == 1), "Benchmark operation point Synthesis 3_1")
             self.m.addConstrs(
-                (self.OptVarOperationPointSYN[(t,j)] == self.OptVarCurrentStateSYN[(t,3)] * self.OptVarUsedOperationPointSYN[j] for t in self.arrTime for j in cm.arrOperationPointsSYN[4:]), "Benchmark operation point Synthesis 3_2")
+                (self.OptVarOperationPointSYN[(t,j)] == self.OptVarUsedOperationPointSYN[j] for t in self.arrTime for j in cm.arrOperationPointsSYN[4:]), "Benchmark operation point Synthesis 3_2")
             
             self.m.addConstr(
                 (gp.quicksum(self.OptVarUsedOperationPointDIS[j] for j in cm.arrOperationPointsDIS[4:]) == 1), "Benchmark operation point Distillation 3_1")
             self.m.addConstrs(
-                (self.OptVarOperationPointDIS[(t,j)] == self.OptVarCurrentStateDIS[(t,3)] * self.OptVarUsedOperationPointDIS[j] for t in self.arrTime for j in cm.arrOperationPointsDIS[4:]), "Benchmark operation point Distillation 3_2")
+                (self.OptVarOperationPointDIS[(t,j)] ==  self.OptVarUsedOperationPointDIS[j] for t in self.arrTime for j in cm.arrOperationPointsDIS[4:]), "Benchmark operation point Distillation 3_2")
             
             self.m.addConstrs(
                 (self.OptVarPowerElectrolyser[(t,n)] >= self.param.param['electrolyser']['benchmarkPower'] * self.OptVarModeElectrolyser[(t,n,3)] for t in self.arrTime for n in elec.arrEnapterModules), "Benchmark power electrolyser")
@@ -240,100 +262,61 @@ class Optimization_Model:
             
             # Maximal einmal hochfahren im Benchmark
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateSwitchCO2CAP[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateSwitchCO2CAP[(t,0,1)] for t in self.arrTime) <= 1), "Maximal times of start-up for CO2-Capture in benchmark")
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateSwitchSYN[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateSwitchSYN[(t,0,1)] for t in self.arrTime) <= 1), "Maximal times of start-up for Synthesis in benchmark")
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateSwitchDIS[(t,0,1)] for t in self.arrTime) <= 1), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateSwitchDIS[(t,0,1)] for t in self.arrTime) <= 1), "Maximal times of start-up for Synthesis in benchmark")
             self.m.addConstrs(
-                (gp.quicksum(self.OptVarModeElectrolyser[(t,n,0)] for t in self.arrTime) <= 1 for n in elec.arrEnapterModules), "fdsa")
+                (gp.quicksum(self.OptVarModeElectrolyser[(t,n,0)] for t in self.arrTime) <= 1 for n in elec.arrEnapterModules), "Maximal times of start-up for Electrolyser in benchmark")
             
             # Kein Standby im Benchmark
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateCO2CAP[(t,2)] for t in self.arrTime) == 0), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateCO2CAP[(t,2)] for t in self.arrTime) == 0), "No standby for CO2-Capture in benchmark")
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateSYN[(t,2)] for t in self.arrTime) == 0), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateSYN[(t,2)] for t in self.arrTime) == 0), "No standby for Synthesis in benchmark")
             self.m.addConstr(
-                (gp.quicksum(self.OptVarCurrentStateDIS[(t,2)] for t in self.arrTime) == 0), "fdsa")
+                (gp.quicksum(self.OptVarCurrentStateDIS[(t,2)] for t in self.arrTime) == 0), "No standby for Distillation in benchmark")
 
-            """
-            if self.param.param['controlParameters']['transitionConstraints'] == True:
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateCO2CAP[(t,1)] == 1 for t in self.arrTime[1:self.param.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Startup'][0]+1]), "Benchmark operation point CO2-Capture 1")
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateCO2CAP[(t,3)] == 1 for t in self.arrTime[1+self.param.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Startup'][0]:]), "Benchmark operation point CO2-Capture 2")
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateSYN[(t,1)] == 1 for t in self.arrTime[1:self.param.param['constraints']['transitionTimes']['minStayTimeSYN_Startup'][0]+1]), "Benchmark operation point Synthesis 1")
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateSYN[(t,3)] == 1 for t in self.arrTime[1+self.param.param['constraints']['transitionTimes']['minStayTimeSYN_Startup'][0]:]), "Benchmark operation point Synthesis 2")
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateDIS[(t,1)] == 1 for t in self.arrTime[1:self.param.param['constraints']['transitionTimes']['minStayTimeDIS_Startup'][0]+1]), "Benchmark operation point Distillation 1")
-                self.m.addConstrs(
-                    (self.OptVarCurrentStateDIS[(t,3)] == 1 for t in self.arrTime[1+self.param.param['constraints']['transitionTimes']['minStayTimeDIS_Startup'][0]:]), "Benchmark operation point Distillation 2")        
-                # The same operation point for absorption and desorption for every time step
-                self.m.addConstrs(
-                    (self.OptVarOperationPointCO2CAP[(t-1,j)] == self.OptVarOperationPointCO2CAP[(t,j)] for t in self.arrTime[2+self.param.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Startup'][0]:] for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3")
-                # The same operation point synthesis for every time step
-                self.m.addConstrs(
-                    (self.OptVarOperationPointSYN[(t-1,j)] == self.OptVarOperationPointSYN[(t,j)] for t in self.arrTime[2+self.param.param['constraints']['transitionTimes']['minStayTimeSYN_Startup'][0]:] for j in cm.arrOperationPointsSYN[4:]), "Benchmark operation point Synthesis 3")    
-                # The same operation point for distillation for every time step
-                self.m.addConstrs(
-                    (self.OptVarOperationPointDIS[(t-1,j)] == self.OptVarOperationPointDIS[(t,j)] for t in self.arrTime[2+self.param.param['constraints']['transitionTimes']['minStayTimeDIS_Startup'][0]:] for j in cm.arrOperationPointsDIS[4:]), "Benchmark operation point Distillation 3")
-                # The same power in electrolyser for every time step
-                self.m.addConstrs(
-                    (self.OptVarPowerElectrolyser[(t-1,n)] == self.OptVarPowerElectrolyser[(t,n)] for t in self.arrTime[2:] for n in elec.arrEnapterModules), "Benchmark power electrolyser")
-                self.m.addConstrs(
-                    (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
-            else:
-                
-                # The same operation point for absorption and desorption for every time step
-                self.m.addConstrs(
-                        (self.OptVarOperationPointCO2CAP[(t-1,j)] == self.OptVarOperationPointCO2CAP[(t,j)] for t in self.arrTime[2:] for j in cm.arrOperationPointsCO2CAP[4:]), "Benchmark operation point CO2-Capture 3")
-                # The same operation point for synthesis for every time step
-                self.m.addConstrs(
-                        (self.OptVarOperationPointSYN[(t-1,j)] == self.OptVarOperationPointSYN[(t,j)] for t in self.arrTime[2:] for j in cm.arrOperationPointsSYN[4:]), "Benchmark operation point Synthesis 3")
-                # The same operation point for distillation for every time step
-                self.m.addConstrs(
-                        (self.OptVarOperationPointDIS[(t-1,j)] == self.OptVarOperationPointDIS[(t,j)] for t in self.arrTime[2:] for j in cm.arrOperationPointsDIS[4:]), "Benchmark operation point Distillation 3")
-                # The same power in electrolyser for every time step
-                self.m.addConstrs(
-                    (self.OptVarPowerElectrolyser[(t-1,n)] == self.OptVarPowerElectrolyser[(t,n)] for t in self.arrTime[2:] for n in elec.arrEnapterModules), "Benchmark power electrolyser")
-                self.m.addConstrs(
-                    (self.OptVarModeElectrolyser[(t-1,n,m)] == self.OptVarModeElectrolyser[(t,n,m)] for t in self.arrTime[3:] for n in elec.arrEnapterModules for m in elec.arrModes), "Benchmark power electrolyser")
-                """
 
- 
+
+        ## Minimum amount of methanol and methanol water
         if self.param.param['controlParameters']['benchmark'] == False:
             if self.param.param['controlParameters']['sameOutputAsBenchmark'] == False:
 
+                # Methanol water
+                #if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
+                #    self.m.addConstr(
+                #        (gp.quicksum(producedMethanolWater[t] for t in self.arrTime) 
+                #        - gp.quicksum(producedMethanolWater[t] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol water produced 1")
+
                 self.m.addConstr(
-                    (gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']))   
-
-                print(self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval'])
-                if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
-                    self.m.addConstr(
-                        (gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime) 
-                        - gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
-
+                    (gp.quicksum(producedMethanolWater[t] for t in self.arrTime) >= self.param.param['production']['minMethanolWater']), "Minimum amount methanol water produced 2") 
+                
                 """
+                # Methanol
                 if self.param.param['controlParameters']['currStartTimeLastOptHorizon'] > 0:
                     self.m.addConstr(
-                        (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) 
-                        - gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
+                        (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) 
+                        - gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime[-self.param.param['controlParameters']['currStartTimeLastOptHorizon']:]) >= self.param.param['production']['minMethanolOpt'] - self.param.param['controlParameters']['prodMethanolLastTimeInterval']), "Minimum amount methanol produced 1")
                 
                 self.m.addConstr(
                     (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:] for t in self.arrTime) >= self.param.param['production']['minMethanolOpt']), "Minimum amount methanol produced 2")     
-            
                 """
+
 
             else:
                 self.m.addConstr(
-                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
+                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) <= self.param.param['production']['methanol']*1.01), "Amount methanol produced is same as benchmark upper bound") 
                 self.m.addConstr(
-                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['methanol']), "Amount methanol produced is same as benchmark lower bound")    
+                    (gp.quicksum(cm.volFlowMethanolOut[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS for t in self.arrTime) >= self.param.param['production']['methanol']), "Amount methanol produced is same as benchmark lower bound")    
 
 
 
+
+
+
+        ## Transition constraints
         if self.param.param['controlParameters']['transitionConstraints'] == True:
             ## Minimum and maximum stay time per mode after new schedule
             if self.param.param['controlParameters']['numTimeStepsToSimulate'] < self.param.param['controlParameters']['numberOfTimeSteps'] and self.param.param['controlParameters']['iteration'] > 0:
@@ -392,6 +375,76 @@ class Optimization_Model:
             
 
             ## Maximum stay time per mode
+            units = ["CO2CAP", "SYN", "DIS"]
+            modes_off = [1, 2, 3, 4]
+            modes_startup = [0, 2, 3, 4]
+            modes_standby = [0, 1, 3, 4]
+            modes_on = [0, 1, 2, 4]
+            modes_shutdown = [0, 1, 2, 3]
+
+            for unit in units:
+                for j in modes_off:
+                    max_stay = self.param.param['constraints']['transitionTimes'][f'maxStayTime{unit}_Off'][j]
+                    min_stay = self.param.param['constraints']['transitionTimes'][f'minStayTime{unit}_Off'][j]
+                    for t in self.arrTime[1:-(max_stay+1)]:
+                        self.m.addConstr(
+                            (1 - getattr(self, f'OptVarCurrentState{unit}')[(t + max_stay + 1, 0)]) >=
+                            getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t, j, 0)] -
+                            gp.quicksum(getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t + i, k, 0)]
+                                        for i in range(min_stay, max_stay)
+                                        for k in modes_off),
+                            name=f"MaxStay_{unit}_Off_{j}_{t}"
+                        )
+                for j in modes_startup:
+                    max_stay = self.param.param['constraints']['transitionTimes'][f'maxStayTime{unit}_Startup'][j]
+                    min_stay = self.param.param['constraints']['transitionTimes'][f'minStayTime{unit}_Startup'][j]
+                    for t in self.arrTime[1:-(max_stay+1)]:
+                        self.m.addConstr(
+                            (1 - getattr(self, f'OptVarCurrentState{unit}')[(t + max_stay + 1, 0)]) >=
+                            getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t, j, 0)] -
+                            gp.quicksum(getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t + i, k, 0)]
+                                        for i in range(min_stay, max_stay)
+                                        for k in modes_off),
+                            name=f"MaxStay_{unit}__Startup_{j}_{t}"
+                        )
+                for j in modes_standby:
+                    max_stay = self.param.param['constraints']['transitionTimes'][f'maxStayTime{unit}_Standby'][j]
+                    min_stay = self.param.param['constraints']['transitionTimes'][f'minStayTime{unit}_Standby'][j]
+                    for t in self.arrTime[1:-(max_stay+1)]:
+                        self.m.addConstr(
+                            (1 - getattr(self, f'OptVarCurrentState{unit}')[(t + max_stay + 1, 0)]) >=
+                            getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t, j, 0)] -
+                            gp.quicksum(getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t + i, k, 0)]
+                                        for i in range(min_stay, max_stay)
+                                        for k in modes_off),
+                            name=f"MaxStay_{unit}__Standbyp_{j}_{t}"
+                        )
+                for j in modes_on:
+                    max_stay = self.param.param['constraints']['transitionTimes'][f'maxStayTime{unit}_On'][j]
+                    min_stay = self.param.param['constraints']['transitionTimes'][f'minStayTime{unit}_On'][j]
+                    for t in self.arrTime[1:-(max_stay+1)]:
+                        self.m.addConstr(
+                            (1 - getattr(self, f'OptVarCurrentState{unit}')[(t + max_stay + 1, 0)]) >=
+                            getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t, j, 0)] -
+                            gp.quicksum(getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t + i, k, 0)]
+                                        for i in range(min_stay, max_stay)
+                                        for k in modes_off),
+                            name=f"MaxStay_{unit}__On_{j}_{t}"
+                        )
+                for j in modes_shutdown:
+                    max_stay = self.param.param['constraints']['transitionTimes'][f'maxStayTime{unit}_Shutdown'][j]
+                    min_stay = self.param.param['constraints']['transitionTimes'][f'minStayTime{unit}_Shutdown'][j]
+                    for t in self.arrTime[1:-(max_stay+1)]:
+                        self.m.addConstr(
+                            (1 - getattr(self, f'OptVarCurrentState{unit}')[(t + max_stay + 1, 0)]) >=
+                            getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t, j, 0)] -
+                            gp.quicksum(getattr(self, f'OptVarCurrentStateSwitch{unit}')[(t + i, k, 0)]
+                                        for i in range(min_stay, max_stay)
+                                        for k in modes_off),
+                            name=f"MaxStay_{unit}__Shutdown_{j}_{t}"
+                        )
+
+            """
             for j in [1,2,3,4]:
                 self.m.addConstrs(
                     ((1 - self.OptVarCurrentStateCO2CAP[(t+self.param.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Off'][j]+1,0)]) >= self.OptVarCurrentStateSwitchCO2CAP[(t,j,0)] - gp.quicksum(self.OptVarCurrentStateSwitchCO2CAP[(t+i,k,0)] for i in range(self.param.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Off'][j],self.param.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Off'][j]) for k in [1,2,3,4]) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Off'][j]+1)]), "Mode switching max stay constraint CO2CAP off")
@@ -431,7 +484,8 @@ class Optimization_Model:
                     ((1 - self.OptVarCurrentStateSYN[(t+self.param.param['constraints']['transitionTimes']['maxStayTimeSYN_Shutdown'][j]+1,4)]) >= self.OptVarCurrentStateSwitchSYN[(t,j,4)] - gp.quicksum(self.OptVarCurrentStateSwitchSYN[(t+i,k,4)] for i in range(self.param.param['constraints']['transitionTimes']['minStayTimeSYN_Shutdown'][j],self.param.param['constraints']['transitionTimes']['maxStayTimeSYN_Shutdown'][j]) for k in [0,1,2,4]) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maxStayTimeSYN_Shutdown'][j]+1)]), "Mode switching max stay constraint SYN shutdown")               
                 self.m.addConstrs(
                     ((1 - self.OptVarCurrentStateDIS[(t+self.param.param['constraints']['transitionTimes']['maxStayTimeDIS_Shutdown'][j]+1,4)]) >= self.OptVarCurrentStateSwitchDIS[(t,j,4)] - gp.quicksum(self.OptVarCurrentStateSwitchDIS[(t+i,k,4)] for i in range(self.param.param['constraints']['transitionTimes']['minStayTimeDIS_Shutdown'][j],self.param.param['constraints']['transitionTimes']['maxStayTimeDIS_Shutdown'][j]) for k in [0,1,2,3]) for t in self.arrTime[1:-(self.param.param['constraints']['transitionTimes']['maxStayTimeDIS_Shutdown'][j]+1)]), "Mode switching max stay constraint DIS shutdown")               
-               
+            """
+                   
 
             ## Mode switching constraints
             # CO2-Capture
@@ -562,59 +616,77 @@ class Optimization_Model:
         ## Battery considered
         if not self.param.param['controlParameters']['considerBattery']:
             self.m.addConstrs(
-                self.OptVarActualPowerInBatteryPV[t] == 0 for t in self.arrTime)
+                (self.OptVarActualPowerInBatteryPV[t] == 0 for t in self.arrTime), name=f"NoBattery_PVIn_{t}")
             self.m.addConstrs(
-                self.OptVarActualPowerInBatteryWind[t] == 0 for t in self.arrTime)
+                (self.OptVarActualPowerInBatteryWind[t] == 0 for t in self.arrTime), name=f"NoBattery_WindIn_{t}")
             self.m.addConstrs(
-                self.OptVarActualPowerInBatteryBought[t] == 0 for t in self.arrTime)
+                (self.OptVarActualPowerInBatteryGrid[t] == 0 for t in self.arrTime), name=f"NoBattery_GridIn_{t}")
             self.m.addConstrs(
-                self.OptVarActualPowerOutBattery[t] == 0 for t in self.arrTime)
+                (self.OptVarActualPowerOutBattery[t] == 0 for t in self.arrTime), name=f"NoBattery_Out_{t}")
             self.m.addConstrs(
-                self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime)
+                (self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), name=f"NoBattery_SoldOut_{t}")
             self.m.addConstrs(
-                self.OptVarIndicatorBatteryCharging1[t] == 0 for t in self.arrTime)
+                (self.OptVarIndicatorBatteryCharging1[t] == 0 for t in self.arrTime), name=f"NoBattery_Charging1_{t}")
             self.m.addConstrs(
-                self.OptVarIndicatorBatteryDischarging1[t] == 0 for t in self.arrTime)
+                (self.OptVarIndicatorBatteryDischarging1[t] == 0 for t in self.arrTime), name=f"NoBattery_Discharging1_{t}")
             self.m.addConstrs(
-                self.OptVarIndicatorBatteryCharging2[t] == 0 for t in self.arrTime)
+                (self.OptVarIndicatorBatteryCharging2[t] == 0 for t in self.arrTime), name=f"NoBattery_Charging2_{t}")
             self.m.addConstrs(
-                self.OptVarIndicatorBatteryDischarging2[t] == 0 for t in self.arrTime)            
+                (self.OptVarIndicatorBatteryDischarging2[t] == 0 for t in self.arrTime), name=f"NoBattery_Discharging2_{t}")     
+            self.m.addConstrs(
+                (self.OptVarIndicatorBatteryCharging3[t] == 0 for t in self.arrTime), name=f"NoBattery_Charging3_{t}")    
         
         
         ## Power Constraints
         # Power from battery and PV and grid to electrolyser and components must equal to needed power
         self.m.addConstrs(
-            (self.OptVarActualPowerOutBattery[t] * self.param.param['battery']['efficiency'] + self.OptVarUsageOfPV[t] + self.OptVarUsageOfWind[t] + self.OptVarPowerBought[t] - self.OptVarActualPowerInBatteryBought[t] == 
+            (self.OptVarActualPowerOutBattery[t] * self.param.param['battery']['efficiency'] + self.OptVarUsageOfPV[t] + self.OptVarUsageOfWind[t] + self.OptVarPowerGrid[t] - self.OptVarActualPowerInBatteryGrid[t] == 
             gp.quicksum(self.OptVarPowerElectrolyser[(t,n)] * self.OptVarModeElectrolyser[(t,n,3)] * fTimeStep for n in elec.arrEnapterModules)
             + gp.quicksum(elec.dictPowerElectrolyserMode[(n,m)] * self.OptVarModeElectrolyser[(t,n,m)] * fTimeStep for n in elec.arrEnapterModules for m in elec.arrModes[:-1])
-            + cm.powerPlantComponentsUnit1[0] * self.OptVarOperationPointCO2CAP[(t,0)] * self.OptVarCurrentStateCO2CAP[(t,0)] * fTimeStep
-            + cm.powerPlantComponentsUnit1[1] * self.OptVarOperationPointCO2CAP[(t,1)] * self.OptVarCurrentStateCO2CAP[(t,1)] * fTimeStep 
-            + cm.powerPlantComponentsUnit1[2] * self.OptVarOperationPointCO2CAP[(t,2)] * self.OptVarCurrentStateCO2CAP[(t,2)] * fTimeStep 
-            + gp.quicksum(cm.powerPlantComponentsUnit1[(j)] * self.OptVarOperationPointCO2CAP[(t,j)] * self.OptVarCurrentStateCO2CAP[(t,3)] * fTimeStep for j in cm.arrOperationPointsCO2CAP[4:])
-            + cm.powerPlantComponentsUnit1[3] * self.OptVarOperationPointCO2CAP[(t,3)] * self.OptVarCurrentStateCO2CAP[(t,4)] * fTimeStep
-            + cm.powerPlantComponentsUnit2[0] * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep
-            + cm.powerPlantComponentsUnit2[1] * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep 
-            + cm.powerPlantComponentsUnit2[2] * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep 
-            + gp.quicksum(cm.powerPlantComponentsUnit2[(j)] * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
-            + cm.powerPlantComponentsUnit2[3] * self.OptVarOperationPointSYN[(t,3)] * self.OptVarCurrentStateSYN[(t,4)] * fTimeStep
-            + cm.powerPlantComponentsUnit3[0] * self.OptVarOperationPointDIS[(t,0)] * self.OptVarCurrentStateDIS[(t,0)] * fTimeStep
-            + cm.powerPlantComponentsUnit3[1] * self.OptVarOperationPointDIS[(t,1)] * self.OptVarCurrentStateDIS[(t,1)] * fTimeStep
-            + cm.powerPlantComponentsUnit3[2] * self.OptVarOperationPointDIS[(t,2)] * self.OptVarCurrentStateDIS[(t,2)] * fTimeStep
-            + gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
-            + cm.powerPlantComponentsUnit3[3] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep
+            + gp.quicksum(cm.powerPlantComponentsUnit1[(j)] * self.OptVarOperationPointCO2CAP[(t,j)] * fTimeStep for j in cm.arrOperationPointsCO2CAP)
+            + gp.quicksum(cm.powerPlantComponentsUnit2[(j)] * self.OptVarOperationPointSYN[(t,j)] * fTimeStep for j in cm.arrOperationPointsSYN)
+            + gp.quicksum(cm.powerPlantComponentsUnit3[(j)] * self.OptVarOperationPointDIS[(t,j)] * fTimeStep for j in cm.arrOperationPointsDIS)
             for t in self.arrTime), "Power balance")
 
-        # Power to battery has always to be smaller than power bought
+        # Power to battery has always to be smaller than power from grid
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] <= self.OptVarPowerBought[t] for t in self.arrTime), "Power to battery has always to be smaller than power bought")
+            (self.OptVarActualPowerInBatteryGrid[t] <= self.OptVarPowerGrid[t] for t in self.arrTime), "Power to battery has always to be smaller than power from grid")
         
-        # Power can not be sold and bought at the same time
+        # Power can not be sold and taken from grid at the same time
         self.m.addConstrs(
-            (self.OptVarPowerBought[t] * self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), "Power can not be sold and bought at the same time")
+            (self.OptVarPowerGrid[t] * self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), "Power can not be sold and taken from grid at the same time")
         
 
         
         # Actual power in and out the battery
+
+        for t in self.arrTime:
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging1[t], True,
+                                         self.OptVarActualPowerInBatteryPV[t] == self.OptVarPowerInBatteryPV[t], name=f"Battery_actual_charging_power_from_pv_{t}_if")
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging1[t], False,
+                                         self.OptVarActualPowerInBatteryPV[t] == 0, name=f"Battery_actual_charging_power_from_pv_{t}_else")
+            
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging2[t], True,
+                                         self.OptVarActualPowerInBatteryGrid[t] == self.OptVarPowerInBatteryGrid[t], name=f"Battery_actual_charging_power_from_grid_{t}_if")
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging2[t], False,
+                                         self.OptVarActualPowerInBatteryGrid[t] == 0, name=f"Battery_actual_charging_power_from_grid_{t}_else")
+            
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging3[t], True,
+                                         self.OptVarActualPowerInBatteryWind[t] == self.OptVarPowerInBatteryWind[t], name=f"Battery_actual_charging_power_from_wind_{t}_if")
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryCharging3[t], False,
+                                         self.OptVarActualPowerInBatteryWind[t] == 0, name=f"Battery_actual_charging_power_from_wind_{t}_else")
+            
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryDischarging1[t], True,
+                                         self.OptVarActualPowerOutBattery[t] == self.OptVarPowerOutBattery[t], name=f"Battery_actual_discharging_power_{t}_if")
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryDischarging1[t], False,
+                                         self.OptVarActualPowerOutBattery[t] == 0, name=f"Battery_actual_discharging_power_from_{t}_else")
+            
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryDischarging2[t], True,
+                                         self.OptVarActualPowerOutBatterySold[t] == self.OptVarPowerOutBatterySold[t], name=f"Battery_actual_discharging_power_sold_{t}_if")
+            self.m.addGenConstrIndicator(self.OptVarIndicatorBatteryDischarging2[t], False,
+                                         self.OptVarActualPowerOutBatterySold[t] == 0, name=f"Battery_actual_discharging_power_sold_{t}_else")
+            
+        """
         self.m.addConstrs(
             (self.OptVarActualPowerInBatteryPV[t] == self.OptVarIndicatorBatteryCharging1[t] * self.OptVarPowerInBatteryPV[t] for t in self.arrTime[1:]), "Battery actual charging power from pv")      
         self.m.addConstrs(
@@ -623,11 +695,11 @@ class Optimization_Model:
             (self.OptVarActualPowerInBatteryPV[t] >= self.OptVarPowerInBatteryPV[t] - (1 - self.OptVarIndicatorBatteryCharging1[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from pv 2")
         
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] == self.OptVarIndicatorBatteryCharging2[t] * self.OptVarPowerInBatteryBought[t] for t in self.arrTime[1:]), "Battery actual charging power from power bought")      
+            (self.OptVarActualPowerInBatteryGrid[t] == self.OptVarIndicatorBatteryCharging2[t] * self.OptVarPowerInBatteryGrid[t] for t in self.arrTime[1:]), "Battery actual charging power from power Grid")      
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] <= self.OptVarPowerInBatteryBought[t] - (1 - self.OptVarIndicatorBatteryCharging2[t]) * self.param.param['battery']['minChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from power bought 1")
+            (self.OptVarActualPowerInBatteryGrid[t] <= self.OptVarPowerInBatteryGrid[t] - (1 - self.OptVarIndicatorBatteryCharging2[t]) * self.param.param['battery']['minChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from power Grid 1")
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] >= self.OptVarPowerInBatteryBought[t] - (1 - self.OptVarIndicatorBatteryCharging2[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from power bought 2")
+            (self.OptVarActualPowerInBatteryGrid[t] >= self.OptVarPowerInBatteryGrid[t] - (1 - self.OptVarIndicatorBatteryCharging2[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual charging power min rate from power Grid 2")
         
         self.m.addConstrs(
             (self.OptVarActualPowerInBatteryWind[t] == self.OptVarIndicatorBatteryCharging3[t] * self.OptVarPowerInBatteryWind[t] for t in self.arrTime[1:]), "Battery actual charging power from wind")      
@@ -650,6 +722,8 @@ class Optimization_Model:
         self.m.addConstrs(
             (self.OptVarActualPowerOutBatterySold[t] >= self.OptVarPowerOutBatterySold[t] - (1 - self.OptVarIndicatorBatteryDischarging2[t]) * self.param.param['battery']['maxChargeRate'] for t in self.arrTime[1:]), "Battery actual discharging power min rate from power sold 2")
         
+        """
+
         self.m.addConstrs(
             (self.OptVarIndicatorBatteryCharging1[t] + self.OptVarIndicatorBatteryDischarging1[t] <= 1 for t in self.arrTime[1:]), "Battery charging and discharging")
         self.m.addConstrs(
@@ -666,7 +740,7 @@ class Optimization_Model:
         
         # Charge and discharge rate have to be smaller than maximum rate
         self.m.addConstrs(
-            (self.OptVarActualPowerInBatteryBought[t] + self.OptVarActualPowerInBatteryPV[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['battery']['maxChargeRate'] for t in self.arrTime), "Battery max charge rate")
+            (self.OptVarActualPowerInBatteryGrid[t] + self.OptVarActualPowerInBatteryPV[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['battery']['maxChargeRate'] for t in self.arrTime), "Battery max charge rate")
         self.m.addConstrs(
             (self.OptVarActualPowerOutBattery[t] + self.OptVarActualPowerOutBatterySold[t] <= self.param.param['battery']['maxDischargeRate'] for t in self.arrTime), "Battery max discharge rate")        
 
@@ -675,22 +749,22 @@ class Optimization_Model:
         if not self.param.param['controlParameters']['powerSale']:
             self.m.addConstrs(
                 (self.OptVarActualPowerOutBatterySold[t] == 0 for t in self.arrTime), "No power can be sold")
-        # Power cannot be bought
+        # No power from grid 
         if not self.param.param['controlParameters']['powerPurchase']:
             self.m.addConstrs(
-                (self.OptVarPowerBought[t] == 0 for t in self.arrTime), "Power can not be bought")
+                (self.OptVarPowerGrid[t] == 0 for t in self.arrTime), "No power from grid")
         # Peak load capping
         if self.param.param['controlParameters']['peakLoadCapping']:
             self.m.addConstrs(
-                (self.OptVarPowerBought[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime), "Peak load capping")
+                (self.OptVarPowerGrid[t] <= self.param['peakLoadCapping']['maximumLoad'] for t in self.arrTime), "Peak load capping")
             
 
         # Power used from PV and stored in battery from PV must be equal or smaller than power available from PV
         self.m.addConstrs(
             (self.OptVarUsageOfPV[t] + self.OptVarActualPowerInBatteryPV[t] <= self.param.param['pv']['powerAvailable'][t] for t in self.arrTime), "PV upper bound available")
         
-        #self.m.addConstrs(
-        #    (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wind']['powerAvailable'][t] for t in self.arrTime[1:]), "Wind upper bound available")
+        self.m.addConstrs(
+            (self.OptVarUsageOfWind[t] + self.OptVarActualPowerInBatteryWind[t] <= self.param.param['wt']['powerAvailable'][t] for t in self.arrTime[1:]), "Wind upper bound available")
 
 
         ## Minimum operation point/operation mode constraint
@@ -717,48 +791,49 @@ class Optimization_Model:
             (gp.quicksum(self.OptVarModeElectrolyser[(t,n,m)] for m in elec.arrModes) == 1 for t in self.arrTime for n in elec.arrEnapterModules), "One operation mode for electrolyser per time period")
 
 
+        # State is always XX
+        #self.m.addConstrs(
+        #    (self.OptVarCurrentStateCO2CAP[(t,3)] == 1 for t in self.arrTime), "State is always on")
+        #self.m.addConstrs(
+        #    (self.OptVarCurrentStateSYN[(t,3)] == 1 for t in self.arrTime), "State is always on")
+        #self.m.addConstrs(
+        #    (self.OptVarCurrentStateDIS[(t,0)] == 1 for t in self.arrTime), "State is always off")
 
-        self.m.addConstrs(
-            (self.OptVarCurrentStateCO2CAP[(t,3)] == 1 for t in self.arrTime), "State is always on")
-        self.m.addConstrs(
-            (self.OptVarCurrentStateSYN[(t,3)] == 1 for t in self.arrTime), "State is always on")
-        self.m.addConstrs(
-            (self.OptVarCurrentStateDIS[(t,0)] == 1 for t in self.arrTime), "State is always off")
 
         ## Initial time step constraints
         # No operation point for Synthesis in initial time step
-        #self.m.addConstr(
-        #    (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
+        self.m.addConstr(
+            (self.OptVarOperationPointCO2CAP[(0,self.param.param['startValues']['operatingPointCO2CAP'])] == 1), "No operation point for CO2-Capture in initial time step")
         # No operation point for CO2-Capture in initial time step
-        #self.m.addConstr(
-        #    (self.OptVarOperationPointSYN[(0,self.param.param['startValues']['operatingPointSYN'])] == 1), "No operation point for Synthesis in initial time step")
+        self.m.addConstr(
+            (self.OptVarOperationPointSYN[(0,self.param.param['startValues']['operatingPointSYN'])] == 1), "No operation point for Synthesis in initial time step")
         # No operation point for distillation in initial time step
-        #self.m.addConstr(
-        #    (self.OptVarOperationPointDIS[(0,self.param.param['startValues']['operatingPointDIS'])] == 1), "No operation point for distillation in initial time step")
+        self.m.addConstr(
+            (self.OptVarOperationPointDIS[(0,self.param.param['startValues']['operatingPointDIS'])] == 1), "No operation point for distillation in initial time step")
         # CO2-Capture is off in initial time step
         self.m.addConstr(
             (self.OptVarCurrentStateCO2CAP[(0,self.param.param['startValues']['stateCO2CAP'])] == 1), "State is off for CO2-Capture in initial time step")
         # Synthesis is off in initial time step
         self.m.addConstr(
-            (self.OptVarCurrentStateSYN[(0,self.param.param['startValues']['stateSYN'])] == 1), "State is off for COSynthesis in initial time step")
+            (self.OptVarCurrentStateSYN[(0,self.param.param['startValues']['stateSYN'])] == 1), "State is off for Synthesis in initial time step")
         # Distillation is off in initial time step
         self.m.addConstr(
             (self.OptVarCurrentStateDIS[(0,self.param.param['startValues']['stateDIS'])] == 1), "State is off for distillation in initial time step")     
         # No power in electrolyser in initial time step
-        #self.m.addConstrs(
-        #    (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
+        self.m.addConstrs(
+            (self.OptVarModeElectrolyser[(0,n,self.param.param['startValues']['modeElectrolyser'][j])] == 1 for n in elec.arrEnapterModules), "Electrolyser modules are off at the beginning")
 
         # No input or output for battery in first time step
-        #self.m.addConstr(
-        #    (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
-        #self.m.addConstr(
-            #    (self.OptVarActualPowerInBatteryWind[0] == 0), "PV in battery initial time step")
-        #self.m.addConstr(
-        #    (self.OptVarActualPowerInBatteryBought[0] == 0), "Power bought battery initial time step")
-        #self.m.addConstr(
-        #    (self.OptVarActualPowerOutBattery[0] == 0), "power out battery initial time step")
-        #self.m.addConstr(
-        #    (self.OptVarActualPowerOutBatterySold[0] == 0), "power sold battery initial time step")
+        self.m.addConstr(
+            (self.OptVarActualPowerInBatteryPV[0] == 0), "PV in battery initial time step")
+        self.m.addConstr(
+            (self.OptVarActualPowerInBatteryWind[0] == 0), "PV in battery initial time step")
+        self.m.addConstr(
+            (self.OptVarActualPowerInBatteryGrid[0] == 0), "Power from grid in battery initial time step")
+        self.m.addConstr(
+            (self.OptVarActualPowerOutBattery[0] == 0), "power out battery initial time step")
+        self.m.addConstr(
+            (self.OptVarActualPowerOutBatterySold[0] == 0), "power sold battery initial time step")
 
 
         ## Electrolyser constraints
@@ -805,11 +880,7 @@ class Optimization_Model:
                 pressure_level_storage_H2[t] <= self.param.param['storageH2']['UpperBound'], f"Storage H2 upper bound at time {t}")
             self.m.addConstr(
                 pressure_level_storage_H2[t] >= self.param.param['storageH2']['LowerBound'], f"Storage H2 lower bound at time {t}")
-            #self.m.addConstr(
-            #    (self.param.param['storageH2']['InitialFilling'] + electrolyser_sum - hydrogen_in_sum) * R_H2_Tamb_T0 * storage_volume_factor <= self.param.param['storageH2']['UpperBound'], f"Storage H2 upper bound at time {t}")       
-            #self.m.addConstr(
-            #    (self.param.param['storageH2']['InitialFilling'] + electrolyser_sum - hydrogen_in_sum) * R_H2_Tamb_T0 * storage_volume_factor >= self.param.param['storageH2']['LowerBound'], f"Storage H2 lower bound at time {t}")
-        
+
         self.m.addConstr(
             (self.param.param['constraints']['hydrogenStorageEqualValue'] - pressure_level_storage_H2[self.param.param['constraints']['hydrogenStorageEqualTime']] <= self.param.param['constraints']['hydrogenStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
         self.m.addConstr(
@@ -818,7 +889,7 @@ class Optimization_Model:
 
 
         ## Methanol water storage constraints
-        methanol_water_mass_flow_in = 0
+        methanol_water_vol_flow_in = 0
         methanol_water_mass_flow_out = 0
         filling_level_storage_methanol_water = []
         
@@ -826,7 +897,7 @@ class Optimization_Model:
         # Precompute constant terms
 
             # Calculate intermediate expressions
-            methanol_water_mass_flow_in = methanol_water_mass_flow_in + (cm.volFlowMethanolWaterStorageIn[(0)] / 1000 * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep
+            methanol_water_vol_flow_in = methanol_water_vol_flow_in + (cm.volFlowMethanolWaterStorageIn[(0)] / 1000 * self.OptVarOperationPointSYN[(t,0)] * self.OptVarCurrentStateSYN[(t,0)] * fTimeStep
                                                                         + cm.volFlowMethanolWaterStorageIn[(1)] / 1000 * self.OptVarOperationPointSYN[(t,1)] * self.OptVarCurrentStateSYN[(t,1)] * fTimeStep
                                                                         + cm.volFlowMethanolWaterStorageIn[(2)] / 1000 * self.OptVarOperationPointSYN[(t,2)] * self.OptVarCurrentStateSYN[(t,2)] * fTimeStep
                                                                         + gp.quicksum(cm.volFlowMethanolWaterStorageIn[(j)] / 1000 * self.OptVarOperationPointSYN[(t,j)] * self.OptVarCurrentStateSYN[(t,3)] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
@@ -838,18 +909,14 @@ class Optimization_Model:
                                                                         + gp.quicksum(cm.massFlowMethanolWaterStorageOut[(j)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,j)] * self.OptVarCurrentStateDIS[(t,3)] * fTimeStep for j in cm.arrOperationPointsDIS[4:])
                                                                         + cm.massFlowMethanolWaterStorageOut[(3)] / self.param.param['storageMethanolWater']['InitialDensity'] * self.OptVarOperationPointDIS[(t,3)] * self.OptVarCurrentStateDIS[(t,4)] * fTimeStep)
 
-            filling_level_storage_methanol_water.append(self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out)
+            filling_level_storage_methanol_water.append(self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_vol_flow_in - methanol_water_mass_flow_out)
             
             # Create the constraint
             self.m.addConstr(
                 filling_level_storage_methanol_water[t] <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}")
             self.m.addConstr(
                 filling_level_storage_methanol_water[t] >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
-            #self.m.addConstr(
-            #    self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out <= self.param.param['storageMethanolWater']['UpperBound'], f"Storage methanol water upper bound at time {t}") 
-            #self.m.addConstr(
-            #    self.param.param['storageMethanolWater']['InitialFilling'] + methanol_water_mass_flow_in - methanol_water_mass_flow_out >= self.param.param['storageMethanolWater']['LowerBound'], f"Storage methanol water lower bound at time {t}")
-        
+
 
         #self.m.addConstr(
         #    (self.param.param['constraints']['methanolWaterStorageEqualValue'] - filling_level_storage_methanol_water[self.param.param['constraints']['methanolWaterStorageEqualTime']] <= self.param.param['constraints']['methanolWaterStorageFillEqual']['LowerBound']), "Storage H2 equal filling upper bound")
@@ -873,12 +940,12 @@ class Optimization_Model:
         # Precompute constant terms
 
             # Calculate intermediate expressions
-            battery_in = battery_in + (self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency']
-                                    + self.OptVarActualPowerInBatteryWind[t] * self.param.param['battery']['efficiency']
-                                    + self.OptVarActualPowerInBatteryBought[t] * self.param.param['battery']['efficiency'])
+            battery_in = battery_in + (self.OptVarActualPowerInBatteryPV[t] * self.param.param['battery']['efficiency'] * fTimeStep
+                                    + self.OptVarActualPowerInBatteryWind[t] * self.param.param['battery']['efficiency'] *  fTimeStep
+                                    + self.OptVarActualPowerInBatteryGrid[t] * self.param.param['battery']['efficiency'] *  fTimeStep)
             
-            battery_out = battery_out + (self.OptVarActualPowerOutBattery[t]
-                                      + self.OptVarActualPowerOutBatterySold[t])
+            battery_out = battery_out + (self.OptVarActualPowerOutBattery[t] *  fTimeStep
+                                      + self.OptVarActualPowerOutBatterySold[t] *  fTimeStep)
             
             battery_charge.append(battery_initial_charge + battery_in - battery_out)
             
@@ -894,6 +961,3 @@ class Optimization_Model:
         self.m.addConstr(
             (self.param.param['constraints']['batteryChargeEqualValue'] - battery_charge[self.param.param['constraints']['batteryChargeEqualTime']] >= battery_fill_equal_ub), "Battery equal charge lower bound")
 
-        
-
-        

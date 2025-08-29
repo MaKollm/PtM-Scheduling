@@ -25,32 +25,34 @@ class Param:
 
             self.objectiveFunction = args[8]
 
-            self.benchmark = args[9]
-            self.sameOutputAsBenchmark = args[10]
+            self.inputParametersManually = args[9]
 
-            self.rateOfChangeConstraints = args[11]
-            self.transitionConstraints = args[12]
-            self.powerSale = args[13]
-            self.powerPurchase = args[14]
-            self.considerPV = args[15]
-            self.considerWT = args[16]
-            self.considerBattery = args[17]
-            self.peakLoadCapping = args[18]
+            self.benchmark = args[10]
+            self.sameOutputAsBenchmark = args[11]
 
-
-            self.use_pvUncertainty = args[19]
-            self.pvUncertainty = args[20]
-            self.use_wtUncertainty = args[21]
-            self.wtUncertainty = args[22]
+            self.rateOfChangeConstraints = args[12]
+            self.transitionConstraints = args[13]
+            self.powerSale = args[14]
+            self.powerPurchase = args[15]
+            self.considerPV = args[16]
+            self.considerWT = args[17]
+            self.considerBattery = args[18]
+            self.peakLoadCapping = args[19]
 
 
-            self.strPathCharMapData = args[23]
-            self.strPathCharMapDataCalc = args[24]
-            self.strPathPVData = args[25]
-            self.strPathWTData = args[26]
-            self.strPathPPData = args[27]
-            self.strPathInitialData = args[28]
-            self.strPathAdaptationData = args[29]
+            self.use_pvUncertainty = args[20]
+            self.pvUncertainty = args[21]
+            self.use_wtUncertainty = args[22]
+            self.wtUncertainty = args[23]
+
+
+            self.strPathCharMapData = args[24]
+            self.strPathCharMapDataCalc = args[25]
+            self.strPathPVData = args[26]
+            self.strPathWTData = args[27]
+            self.strPathPPData = args[28]
+            self.strPathInitialData = args[29]
+            self.strPathAdaptationData = args[30]
         
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
@@ -71,7 +73,7 @@ class Param:
 
 
 
-    def speichern(self, iteration):
+    def save(self, iteration):
         # Storages
         pressure_H2 = self.pressure_H2_entry.get()
         if pressure_H2.strip() == "":
@@ -86,19 +88,21 @@ class Param:
             self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
             self.param['storageMethanolWater']['InitialFilling'] = 15.09 / 1000 + (np.pi * (0.451 / 2)**2 * float(self.filling_MeOH_entry.get()) / 1000) 
 
+
         # Methanol produced 
         methanol_produced = self.methanol_produced_entry.get()
         if methanol_produced.strip() == "":
             pass
-        """
         else:
-            for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
-                self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_water_produced_entry.get())
+            if False:
+                for i in range(0,self.param['controlParameters']['numTimeStepsToSimulate']):
+                    self.param['controlParameters']['prodMethanolLastTimeInterval'] = self.param['controlParameters']['prodMethanolLastTimeInterval'] + float(self.methanol_water_produced_entry.get())
+            
+                self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
+                self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
         
-            self.param['controlParameters']['currStartTimeLastOptHorizon'] = int((iteration % (self.param['controlParameters']['numberOfTimeSteps'] / self.param['controlParameters']['numTimeStepsToSimulate'])) * self.param['controlParameters']['numTimeStepsToSimulate'])
-            self.param['controlParameters']['numTimeStepsToHorizonEnd'] = self.param['controlParameters']['numberOfTimeSteps'] - self.param['controlParameters']['currStartTimeLastOptHorizon']
-        """
 
+        # Methanol water produced
         methanol_water_produced = self.methanol_water_produced_entry.get()
         if methanol_water_produced.strip() == "":
             pass
@@ -124,9 +128,7 @@ class Param:
 
 
 
-    def funcStoreInitialData(self, iteration):
-        
-        
+    def input_values(self, iteration):
         # Fenster erstellen
         self.fenster = tk.Tk()
         self.fenster.title("Input Data:")
@@ -149,23 +151,16 @@ class Param:
         self.methanol_produced_entry.grid(row=3, column=1)
 
         # Button zum Speichern
-        speichern_button = tk.Button(self.fenster, text="Save", command=lambda: self.speichern(iteration))
+        speichern_button = tk.Button(self.fenster, text="Save", command=lambda: self.save(iteration))
         speichern_button.grid(row=4, column=0, columnspan=2)
 
         
         # GUI starten
         self.fenster.mainloop()
 
+    def funcStoreInitialData(self, iteration):
 
-        print(self.param['storageH2']['InitialPressure'])
-        print(self.param['storageMethanolWater']['InitialFilling'])
-        print(self.param['constraints']['methanolWaterStorageEqualValue'])
-        print(self.param['controlParameters']['prodMethanolLastTimeInterval'])
-        print(self.param['controlParameters']['currStartTimeLastOptHorizon'])
-        
-
-        
-        if os.path.isfile(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl") == True:
+        if os.path.isfile(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl"):
             with open(self.param['controlParameters']['pathInitialData'] + "\input_data.pkl", 'rb') as f:
                 self.param['initialData'] = pickle.load(f)
 
@@ -192,6 +187,7 @@ class Param:
                                 elif k == 4:
                                     self.param['constraints']['transitionTimesStart']['minStayTimeCO2CAP'] = max(1,self.param['constraints']['transitionTimes']['minStayTimeCO2CAP_Shutdown'][j] - (self.param['controlParameters']['numTimeStepsToSimulate'] - i))
                                     self.param['constraints']['transitionTimesStart']['maxStayTimeCO2CAP'] = self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Shutdown'][j] - (self.param['controlParameters']['numTimeStepsToSimulate'] - i) if np.min(self.param['constraints']['transitionTimes']['maxStayTimeCO2CAP_Shutdown']) < self.param['controlParameters']['numberOfTimeSteps'] else self.param['controlParameters']['numberOfTimeSteps']
+                                
                                 valueFound = True
 
                 valueFound = False
@@ -263,10 +259,7 @@ class Param:
                         self.param['startValues']['operatingPointDIS'] = j
                         print(j)
 
-                self.param['storageH2']['InitialPressure'] = self.param['initialData']["output_Scheduling"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']-1]
-                self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
-
-                """
+                
                 # Storages
                 self.param['storageH2']['InitialPressure'] = self.param['initialData']["output_Scheduling"]['storageH2Pressure'][self.param['controlParameters']['numTimeStepsToSimulate']-1]
                 self.param['storageH2']['InitialFilling'] = self.param['storageH2']['InitialPressure']*100000*self.param['storageH2']['Volume'] / (self.param['R_H2']*(self.param['Tamb'] + self.param['T0']))
@@ -289,8 +282,14 @@ class Param:
                 if self.param['controlParameters']['currStartTimeLastOptHorizon'] == 0:
                     self.param['controlParameters']['prodMethanolLastTimeInterval'] = 0
                     self.param['constraints']['hydrogenStorageEqualTime'] = self.param['controlParameters']['numberOfTimeSteps'] - 1
-                """
-        print(self.param['storageH2']['InitialPressure'])
+                
+        
+        # Input the parameters manually 
+        if self.param['controlParameters']['inputParametersManually']:
+            self.save(iteration)
+
+
+
         
     def funcGet(self, j):
 
@@ -300,7 +299,8 @@ class Param:
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 15
-        self.param['production']['minMethanolOpt'] = 15 #113.75 #108.065
+        self.param['production']['minMethanolOpt'] = 0 #113.75 #108.065
+        self.param['production']['minMethanolWater'] = 15
         self.param['production']['methanol'] = 0      
         
         
@@ -328,6 +328,7 @@ class Param:
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime']
         self.param['controlParameters']['useRealForecast'] = self.useRealForecast
         self.param['controlParameters']['objectiveFunction'] = self.objectiveFunction
+        self.param['controlParameters']['inputParametersManually'] = self.inputParametersManually
         self.param['controlParameters']['benchmark'] = self.benchmark
         self.param['controlParameters']['sameOutputAsBenchmark'] = self.sameOutputAsBenchmark
         self.param['controlParameters']['rateOfChangeConstraints'] = self.rateOfChangeConstraints
@@ -562,13 +563,14 @@ class Param:
 
         ## Start values
         self.param['startValues'] = {}
-        self.param['startValues']['stateCO2CAP'] = 3            # off
-        self.param['startValues']['stateSYN'] = 3               # off
+        self.param['startValues']['stateCO2CAP'] = 0            # off
+        self.param['startValues']['stateSYN'] = 0               # off
         self.param['startValues']['stateDIS'] = 0               # off
         self.param['startValues']['modeElectrolyser'] = np.ones(self.param['electrolyser']['numberOfEnapterModules']) * 3       # off
         self.param['startValues']['operatingPointCO2CAP'] = 0   # off
         self.param['startValues']['operatingPointSYN'] = 0      # off
         self.param['startValues']['operatingPointDIS'] = 0      # off
+
 
 
         ## Storage constraints

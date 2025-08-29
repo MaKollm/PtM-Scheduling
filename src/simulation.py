@@ -39,10 +39,9 @@ class Simulation:
         self.dictOutput_Scheduling['massFlowHydrogenIn'] = []
         self.dictOutput_Scheduling['massFlowBiogasOut'] = []
         self.dictOutput_Scheduling['moleFractionMethaneBiogasOut'] = []
-        #self.dictOutput_Scheduling['massFlowMethanolWaterStorageIn'] = []
-        self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'] = []
+        self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'] = list(range(0, len(self.arrTime)))
+        self.dictOutput_Scheduling['producedMethanolWater'] = list(range(0, len(self.arrTime)))
         self.dictOutput_Scheduling['massFlowMethanolWaterStorageOut'] = []
-        #self.dictOutput_Scheduling['massFlowMethanolOut'] = []
         self.dictOutput_Scheduling['volFlowMethanolOut'] = []
         self.dictOutput_Scheduling['moleFractionH2SynthesisgasIn'] = []
         self.dictOutput_Scheduling['moleFractionCO2SynthesisgasIn'] = []
@@ -86,13 +85,22 @@ class Simulation:
                 + gp.quicksum(cm.moleFractionMethaneBiogasOut[j] * resultOpt.dictResult['input']['operationPoint_CO2CAP'][i,j] * resultOpt.dictResult['input']['currentStateCO2CAPRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsCO2CAP[4:])
                 + cm.moleFractionMethaneBiogasOut[3] * resultOpt.dictResult['input']['operationPoint_CO2CAP'][i,3] * resultOpt.dictResult['input']['currentStateCO2CAPRaw'][i,4] * fTimeStep)
             
-            
-            self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'].append(
-                + cm.volFlowMethanolWaterStorageIn[0] * resultOpt.dictResult['input']['operationPoint_SYN'][i,0] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,0] * fTimeStep
-                + cm.volFlowMethanolWaterStorageIn[1] * resultOpt.dictResult['input']['operationPoint_SYN'][i,1] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,1] * fTimeStep
-                + cm.volFlowMethanolWaterStorageIn[2] * resultOpt.dictResult['input']['operationPoint_SYN'][i,2] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,2] * fTimeStep
-                + gp.quicksum(cm.volFlowMethanolWaterStorageIn[j] * resultOpt.dictResult['input']['operationPoint_SYN'][i,j] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
-                + cm.volFlowMethanolWaterStorageIn[3] * resultOpt.dictResult['input']['operationPoint_SYN'][i,3] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,4] * fTimeStep)
+
+            T = 0.3
+            alpha = np.min([1,fTimeStep / T])
+            if i == 0:
+                self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i] = gp.quicksum(cm.volFlowMethanolWaterStorageIn[j] * resultOpt.dictResult['input']['operationPoint_SYN'][i,j] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,3] for j in cm.arrOperationPointsSYN[4:])
+                self.dictOutput_Scheduling['producedMethanolWater'][i] = self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i]
+            else:
+                self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i] = (1 - alpha) * self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i-1] + alpha * gp.quicksum(cm.volFlowMethanolWaterStorageIn[j] * resultOpt.dictResult['input']['operationPoint_SYN'][i,j] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,3] for j in cm.arrOperationPointsSYN[4:])
+                self.dictOutput_Scheduling['producedMethanolWater'][i] = (self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i] + self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'][i-1]) * fTimeStep / 2
+
+            #self.dictOutput_Scheduling['volFlowMethanolWaterStorageIn'].append(
+            #    + cm.volFlowMethanolWaterStorageIn[0] * resultOpt.dictResult['input']['operationPoint_SYN'][i,0] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,0] * fTimeStep
+            #    + cm.volFlowMethanolWaterStorageIn[1] * resultOpt.dictResult['input']['operationPoint_SYN'][i,1] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,1] * fTimeStep
+            #    + cm.volFlowMethanolWaterStorageIn[2] * resultOpt.dictResult['input']['operationPoint_SYN'][i,2] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,2] * fTimeStep
+            #    + gp.quicksum(cm.volFlowMethanolWaterStorageIn[j] * resultOpt.dictResult['input']['operationPoint_SYN'][i,j] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,3] * fTimeStep for j in cm.arrOperationPointsSYN[4:])
+            #    + cm.volFlowMethanolWaterStorageIn[3] * resultOpt.dictResult['input']['operationPoint_SYN'][i,3] * resultOpt.dictResult['input']['currentStateSYNRaw'][i,4] * fTimeStep)
            
             self.dictOutput_Scheduling['massFlowMethanolWaterStorageOut'].append(
                 + cm.massFlowMethanolWaterStorageOut[0] * resultOpt.dictResult['input']['operationPoint_DIS'][i,0] * resultOpt.dictResult['input']['currentStateDISRaw'][i,0] * fTimeStep
@@ -147,7 +155,7 @@ class Simulation:
             self.dictOutput_Scheduling['batteryCharge'].append((self.param.param['battery']['initialCharge'] 
                 + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryPV'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])
                 + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryWind'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])
-                + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryBought'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])  
+                + gp.quicksum(resultOpt.dictResult['input']['actualPowerInBatteryGrid'][l] * self.param.param['battery']['efficiency'] for l in self.arrTime[0:i+1])  
                 - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBattery'][l] for l in self.arrTime[0:i+1])
                 - gp.quicksum(resultOpt.dictResult['input']['actualPowerOutBatterySold'][l] for l in self.arrTime[0:i+1])))
             
@@ -202,8 +210,8 @@ class Simulation:
 
         # Costs
         self.dictCosts['methanol'] = -np.sum(np.array(self.dictOutput_Scheduling['volFlowMethanolOut']) * self.param.param['prices']['methanol'])
-        self.dictCosts['powerBought'] = np.sum(np.dot(self.param.param['prices']['power'], resultOpt.dictResult['input']['powerBought']))
-        self.dictCosts['carbonIntensity'] = np.sum(np.dot(self.param.param['carbonIntensity']['carbonIntensity'], resultOpt.dictResult['input']['powerBought']))
+        self.dictCosts['powerGrid'] = np.sum(np.dot(self.param.param['prices']['power'], resultOpt.dictResult['input']['powerGrid']))
+        self.dictCosts['carbonIntensity'] = np.sum(np.dot(self.param.param['carbonIntensity']['carbonIntensity'], resultOpt.dictResult['input']['powerGrid']))
         self.dictCosts['powerBatterySold'] = -np.sum(self.param.param['prices']['powerSold'] * np.array(resultOpt.dictResult['input']['actualPowerOutBatterySold']))
         
         self.dictCosts['all'] = sum(self.dictCosts.values())

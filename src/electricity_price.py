@@ -31,6 +31,10 @@ class PowerPrice():
         else:
             self.funcUpdateCSV(param)
 
+
+        ## Repeat prices depending on time step
+        self.arrPowerPriceHourly = [price for price in self.arrPowerPriceHourly for _ in range(int(1 / self.param.param['controlParameters']['timeStep']))]
+
         if len(self.arrPowerPriceHourly) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
             raise Exception("Error: The start time and the time of the power price forecast or the historical power price data do not match")
 

@@ -199,10 +199,10 @@ class Result():
             for i in self.arrTime:
                 self.dictResult['input']['powerInBatteryWind'].append(solution[i])
 
-            self.dictResult['input']['powerInBatteryBought'] = []
-            solution = optModel.m.getAttr('X', optModel.OptVarPowerInBatteryBought)
+            self.dictResult['input']['powerInBatteryGrid'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarPowerInBatteryGrid)
             for i in self.arrTime:
-                self.dictResult['input']['powerInBatteryBought'].append(solution[i])
+                self.dictResult['input']['powerInBatteryGrid'].append(solution[i])
              
             self.dictResult['input']['powerOutBattery'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarPowerOutBattery)
@@ -214,10 +214,10 @@ class Result():
             for i in self.arrTime:
                 self.dictResult['input']['powerOutBatterySold'].append(solution[i])
  
-            self.dictResult['input']['powerBought'] = []
-            solution = optModel.m.getAttr('X', optModel.OptVarPowerBought)
+            self.dictResult['input']['powerGrid'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarPowerGrid)
             for i in self.arrTime:
-                self.dictResult['input']['powerBought'].append(solution[i]) 
+                self.dictResult['input']['powerGrid'].append(solution[i]) 
       
             
             self.dictResult['input']['indicatorBatteryCharging1'] = []
@@ -256,10 +256,10 @@ class Result():
             for i in self.arrTime:
                 self.dictResult['input']['actualPowerInBatteryWind'].append(solution[i])
 
-            self.dictResult['input']['actualPowerInBatteryBought'] = []
-            solution = optModel.m.getAttr('X', optModel.OptVarActualPowerInBatteryBought)
+            self.dictResult['input']['actualPowerInBatteryGrid'] = []
+            solution = optModel.m.getAttr('X', optModel.OptVarActualPowerInBatteryGrid)
             for i in self.arrTime:
-                self.dictResult['input']['actualPowerInBatteryBought'].append(solution[i]) 
+                self.dictResult['input']['actualPowerInBatteryGrid'].append(solution[i]) 
 
             self.dictResult['input']['actualPowerOutBattery'] = []
             solution = optModel.m.getAttr('X', optModel.OptVarActualPowerOutBattery)
@@ -408,19 +408,19 @@ class Result():
         print('Production')
         print('')
         print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut']))
-        print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolWaterStorageIn']))
+        print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['producedMethanolWater']))
         print('Methan: ' , np.sum(self.dictResult['output_Scheduling']['massFlowBiogasOut']))
 
         print('')
         print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
-        print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolWaterStorageIn'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
+        print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['producedMethanolWater'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
         print('')
         print('##########')
 
         print("Consumption")
         print('Biogas: ', np.sum(self.dictResult['input']['massFlowBiogasIn']))     
         print('Hydrogen: ', np.sum(self.dictResult['output_Scheduling']['massFlowHydrogenIn']))     
-        print('Electrical power: ', np.sum(self.dictResult['input']['powerBought']))
+        print('Electrical power: ', np.sum(self.dictResult['input']['powerGrid']))
 
 
     def funcSaveResult(self, optModel, text):
@@ -460,6 +460,6 @@ class Result():
         ###################################
         ########## Visualization ########## 
 
-        #visu(self.dictResult)
+        visu(self.dictResult)
         pass
     

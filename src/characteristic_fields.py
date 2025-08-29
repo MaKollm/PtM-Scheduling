@@ -40,7 +40,7 @@ class CharMap():
 
         # Distillation
         self.iIndexMassFlowMethanolWaterStorageOut =  self.param.param['charMap']['DIS']['index']['massFlowMethanolWaterStorageOut']
-        self.iIndexMassFlowMethanolOut =  self.param.param['charMap']['DIS']['index']['massFlowMethanolOut']
+        self.iIndexMassFlowMethanolOut =  self.param.param['charMap']['DIS']['index']['volFlowMethanolOut']
         self.iIndexVolFlowMethanolOut =  self.param.param['charMap']['DIS']['index']['volFlowMethanolOut']
         self.iIndexMoleFractionMethanolOut = self.param.param['charMap']['DIS']['index']['moleFractionMethanolOut']
         self.iIndexPowerPlantComponentsUnit3 =  self.param.param['charMap']['DIS']['index']['powerPlantComponentsUnit3']

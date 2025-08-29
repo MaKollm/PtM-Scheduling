@@ -30,20 +30,23 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 1*24                 # Considered time period in hours
+optimizationHorizon = 7*24                 # Considered time period in hours
 timeStep = 1                                # Time step of optimization in hours
 timeLimit = 60                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 1                     # Number of hours to simulate before adaptation takes place
+
 startTime = pd.Timestamp("2023-06-03 01:00")
 useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
+inputParametersManually = False             
+
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
-testFeasibility = False                    # If true the optimization model will be tested for feasibility
+testFeasibility = False                   # If true the optimization model will be tested for feasibility
 rateOfChangeConstraints = False            # If true rate of change constraints will be considered
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
@@ -58,7 +61,7 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc_adapt_simple'
+strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v4\calc'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc'
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
@@ -76,6 +79,7 @@ args = [optimizationHorizon,
         startTime,
         useRealForecast,
         objectiveFunction,
+        inputParametersManually,
         benchmark,
         sameOutputAsBenchmark,
         rateOfChangeConstraints,
@@ -186,7 +190,7 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, wt,
     
     if optModel.m.status != GRB.INFEASIBLE and optModel.m.SolCount > 0:
         # Mit gedriftetem Kennfeld -> Wahre Kosten bei Drift, diese Daten werden für die Adaption genutzt
-        if bUseDriftCharMap == True:
+        if bUseDriftCharMap:
             simulation.funcStartSimulation(param, resultOpt, cmDrift, elec, pv, wt, pp, ci)
             resultOpt.funcSaveResult(optModel, "trueDriftCharMap")
 
@@ -196,7 +200,7 @@ def funcStartOptimization(argWorkflow, param, cm, cmCalc, cmDrift, elec, pv, wt,
             resultOpt.funcSaveResult(optModel, "trueCharMap")
 
         # Mit berechnetem Kennfeld -> Berechnete Kosten
-        if bUseCalcCharMap == True:
+        if bUseCalcCharMap:
             simulation.funcStartSimulation(param, resultOpt, cmCalc, elec, pv, wt, pp, ci)
             resultOpt.funcSaveResult(optModel, "calcCharMap")
     
@@ -220,7 +224,7 @@ def main(argWorkflow):
         useAdaptation = False
         scheduleMoreTimes = True
 
-        numberOfIterations = 30
+        numberOfIterations = 1
 
 
         bUseCalcCharMap = False
@@ -243,10 +247,6 @@ def main(argWorkflow):
 
         createGif(results)
 
-        #startDrift = 10
-        #endDrift = 15
-        #startCalculation = 5
-
     return dataOpt
     
 
@@ -255,5 +255,3 @@ if __name__ == "__main__":
 
     dataOpt = main([False, 0])
     
-
-# %%
