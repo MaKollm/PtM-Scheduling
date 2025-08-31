@@ -683,7 +683,7 @@ class Optimization_Model:
         if self.param.constraintUseSigmaPV == "const":
             sigmaPV = np.full(self.param.param['controlParameters']['numberOfTimeSteps'], self.param.param["pv"]["covScalarPowerOutput"])
         elif self.param.constraintUseSigmaPV == "arr":
-            raise KeyError("self.constraintUseSigmaPV == arr not implemented yet") #sigmaPV = self.param.param["pv"]["powerAvailableSigma"]
+            sigmaPV = self.param.param["pv"]["powerAvailableSigma"]
         else:
             raise ValueError("Unknown constraintUseSigmaPV: {}".format(self.param.constraintUseSigmaPV))
         
@@ -709,7 +709,7 @@ class Optimization_Model:
         if self.param.constraintUseSigmaWT == "const":
             sigmaWT = np.full(self.param.param['controlParameters']['numberOfTimeSteps'], self.param.param["wt"]["covScalarPowerOutput"])
         elif self.param.constraintUseSigmaWT == "arr":
-            raise KeyError("self.constraintUseSigmaWT == arr not implemented yet") #sigmaWT = self.param.param["wt"]["powerAvailableSigma"]
+            sigmaWT = self.param.param["wt"]["powerAvailableSigma"]
         else:
             raise ValueError("Unknown constraintUseSigmaWT: {}".format(self.param.constraintUseSigmaWT))
         

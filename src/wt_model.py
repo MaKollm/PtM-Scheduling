@@ -60,6 +60,11 @@ class WT:
 				self.funcAddNoiseWeather(useSigmaFrame=True)
 				self.weather_data = self.weather_data_noisy
 
+		#calculate uncertainty of power output from weather uncertainty 
+		if self.param.constraintTypePV != "deterministic" and self.param.constraintUseSigmaPV == "arr":
+			self.funcCalcUncertaintyPowerOutput()
+
+		#calculate power
 		self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_wtUncertainty=self.param.param['controlParameters']['use_wtUncertainty'])
 
 		if param.param["controlParameters"]["use_wtUncertainty"] and param.param["controlParameters"]["wtUncertainty"] == "power_noise":
@@ -170,7 +175,7 @@ class WT:
 
 
 	#creates powerdata and saves it as pd.Series
-	def funcCreatePowerData(self, use_csv = False, use_wtUncertainty = False):
+	def funcCreatePowerData(self, use_csv = False, use_wtUncertainty = False,writeOutput = True):
 
 		#ignore wind_direction - maybe use it later for corrections(dependent of turbine angle)
 		#weather_dict = {"online" : self.online_weather_data, "online_noisy" : self.online_weather_data_noisy, "csv": self.csv_weather_data}
@@ -204,8 +209,11 @@ class WT:
 
 		modelChain = ModelChain(turbine,**modelchain_data).run_model(weather)
 
-		self.powerOutput = modelChain.power_output.rename("Power [kW]") * self.param.param['wt']['powerOfSystem'] / self.param.param['wt']['powerOfTurbine'] / 1000
-		self.powerOutput.index = pd.to_datetime(self.powerOutput.index, format="%Y%m%d:%H%M")
+		powerOutput = modelChain.power_output.rename("Power [kW]") * self.param.param['wt']['powerOfSystem'] / self.param.param['wt']['powerOfTurbine'] / 1000
+		powerOutput.index = pd.to_datetime(powerOutput.index, format="%Y%m%d:%H%M")
+		if writeOutput == True: #only overwrite if writeOutput is True
+			self.powerOutput = powerOutput
+		return powerOutput
 
 	########## Uncertainty ##########
 
@@ -361,6 +369,27 @@ class WT:
 		
 
 		
+	def funcCalcUncertaintyPowerOutput(self):
+		N=100 #number of Uncertainty Samples
+		self.funcCalcUncertaintyWeather(plot=False, correctWeather=True)
+		weather_cache = self.weather_data.copy(deep=True)
+		powerOutputN = np.zeros((len(self.weather_data),N))
 
-	
+		for i in range(N):
+			self.funcAddNoiseWeather(useSigmaFrame = True)
+			self.weather_data = self.weather_data_noisy
+			powerOutput = self.funcCreatePowerData(use_csv = False, writeOutput = False)
+			powerOutputArr = powerOutput.to_numpy()
+			for j in range(len(powerOutputArr)):
+				powerOutputN[j][i] = powerOutputArr[j]
+		self.weather_data = weather_cache
 
+		powerOutputMu = np.zeros(len(self.weather_data))
+		powerOutputSigma = np.zeros(len(self.weather_data))
+
+		for j in range(len(powerOutputN)):
+			powerOutputMu[j] = np.mean(powerOutputN[j])
+			powerOutputSigma[j] = np.std(powerOutputN[j])
+
+		self.powerOutputMu = pd.Series(powerOutputMu, index=self.weather_data.index)
+		self.powerOutputSigma = pd.Series(powerOutputSigma, index=self.weather_data.index)

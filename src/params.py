@@ -70,6 +70,12 @@ class Param:
     def funcUpdate(self, pv, wt, pp, ci, iteration):
         self.param['pv']['powerAvailable'] = pv.arrPowerAvailable
         self.param['wt']['powerAvailable'] = wt.arrPowerAvailable
+        if self.constraintTypePV != "deterministic" and self.constraintUseSigmaPV == "arr":
+            self.param['pv']['powerAvailableMu'] = pv.powerOutputMu.to_numpy()
+            self.param['pv']['powerAvailableSigma'] = pv.powerOutputSigma.to_numpy()
+        if self.constraintTypeWT != "deterministic" and self.constraintUseSigmaWT == "arr":
+            self.param['wt']['powerAvailableMu'] = wt.powerOutputMu.to_numpy() 
+            self.param['wt']['powerAvailableSigma'] = wt.powerOutputSigma.to_numpy()
         self.param['prices']['power'] = pp.arrPowerPriceHourly
         self.param['carbonIntensity']['carbonIntensity'] = ci.arrCarbonIntensityHourly
 

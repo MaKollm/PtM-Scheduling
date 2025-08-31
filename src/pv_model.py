@@ -75,6 +75,10 @@ class PV:
                 self.funcAddNoiseWeather(useSigmaFrame=True)
                 self.weather_data = self.weather_data_noisy
 
+        #calculate uncertainty of power output from weather uncertainty 
+        if self.param.constraintTypePV != "deterministic" and self.param.constraintUseSigmaPV == "arr":
+            self.funcCalcUncertaintyPowerOutput()
+
         # calculate power
         self.funcCreatePowerData(use_csv= not self.param.param['controlParameters']['useRealForecast'], use_pvUncertainty=self.param.param['controlParameters']['use_pvUncertainty'])
 
@@ -91,9 +95,7 @@ class PV:
         else:
             self.arrPowerAvailable = np.zeros(len(self.powerOutput))
 
-        print(self.powerOutput[start:end])
-        print(len(self.arrPowerAvailable),self.param.param["controlParameters"]["optimizationHorizon"])
-        print(self.arrPowerAvailable)
+
         if len(self.arrPowerAvailable) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
             raise Exception("Error: The start time and the time of the weather forecast or the historical weather data do not match")
 
@@ -172,7 +174,9 @@ class PV:
         self.online_weather_data = hourly_dataframe
 
 
-    def funcCreatePowerData(self, use_csv = False, use_pvUncertainty = False, pv_Uncertainty = "power_noise"):
+    def funcCreatePowerData(self, use_csv = False, use_pvUncertainty = False, pv_Uncertainty = "power_noise", writeOutput = True):
+
+
 
         # PV
         location = Location(latitude = float(self.strPvLat), longitude = float(self.strPvLon),tz='Europe/Berlin',altitude=110, name='KIT Campus Nord')
@@ -199,7 +203,10 @@ class PV:
             if float(self.dataRaw.iloc[i]) < 0.0:
                 self.dataRaw.iloc[i] = 0.0
 
-        self.powerOutput = self.dataRaw.copy(deep=True)  * self.param.param['pv']['powerOfSystem'] / self.param.param['pv']['powerOfModule'] / 1000
+        powerOutput = self.dataRaw.copy(deep=True)  * self.param.param['pv']['powerOfSystem'] / self.param.param['pv']['powerOfModule'] / 1000
+        if writeOutput == True: #only overwrite if writeOutput is True
+            self.powerOutput = powerOutput
+        return powerOutput
 
 
 ########## Uncertainty ##########
@@ -357,3 +364,32 @@ class PV:
         for i, key in enumerate(self.weather_data.columns.to_numpy()):
             self.weather_data.loc[:,"mu_"+key] =  array_fit_parameters[i][0]
             self.weather_data.loc[:,"sigma_"+key] = array_fit_parameters[i][1]
+
+
+    def funcCalcUncertaintyPowerOutput(self):
+        N=100 #number of Uncertainty Samples
+        self.funcCalcUncertaintyWeather(plot=False, correctWeather=True)
+        weather_cache = self.weather_data.copy(deep=True)
+        powerOutputN = np.zeros((len(self.weather_data),N))
+
+        for i in range(N):
+            self.funcAddNoiseWeather(useSigmaFrame = True)
+            self.weather_data = self.weather_data_noisy
+            powerOutput = self.funcCreatePowerData(use_csv = False, writeOutput = False)
+            powerOutputArr = powerOutput.to_numpy()
+            for j in range(len(powerOutputArr)):
+                powerOutputN[j][i] = powerOutputArr[j]
+        self.weather_data = weather_cache
+
+        powerOutputMu = np.zeros(len(self.weather_data))
+        powerOutputSigma = np.zeros(len(self.weather_data))
+
+        for j in range(len(powerOutputN)):
+            powerOutputMu[j] = np.mean(powerOutputN[j])
+            powerOutputSigma[j] = np.std(powerOutputN[j])
+
+        self.powerOutputMu = pd.Series(powerOutputMu, index=self.weather_data.index)
+        self.powerOutputSigma = pd.Series(powerOutputSigma, index=self.weather_data.index)
+        
+
+

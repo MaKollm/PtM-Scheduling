@@ -32,19 +32,18 @@ timeLimit = 1000                           # Time limit for the solver to termin
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 7*24                     # Number of hours to simulate before adaptation takes place
-startTime = pd.Timestamp("2023-01-01 01:00")
-useRealForecast = False
-
+startTime = pd.Timestamp("2025-08-31") #pd.Timestamp("2023-01-01 01:00")
+useRealForecast = True
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
 constraintTypePV = "CVaR"          # determistic, chance, CVaR
 constraintTypeWT = "CVaR"          # determistic, chance, CVaR
 constraintEpsPV = 0.6                     # Epsilon value for chance constraint/CVaR of PV
 constraintEpsWT = 0.05                      # Epsilon value for chance constraint/CVaR of WT
-constraintCVaRBoundaryPV = 100        # Boundary for the CVaR constraint
-constraintCVaRBoundaryWT = 0.05               # Boundary for the CVaR constraint
-constraintUseSigmaPV = "const"              # const: uses constant self.param.param["pv"]["covScalarPowerOutput"], arr: uses param.["pv"]["powerAvailableSigma"]
-constraintUseSigmaWT = "const"              # const: uses constant self.param.param["wt"]["covScalarPowerOutput"], arr: uses param.["wt"]["powerAvailableSigma"]
+constraintCVaRBoundaryPV = 1        # Boundary for the CVaR constraint
+constraintCVaRBoundaryWT = 1               # Boundary for the CVaR constraint
+constraintUseSigmaPV = "arr"              # const: uses constant self.param.param["pv"]["covScalarPowerOutput"], arr: uses param.["pv"]["powerAvailableSigma"]
+constraintUseSigmaWT = "arr"              # const: uses constant self.param.param["wt"]["covScalarPowerOutput"], arr: uses param.["wt"]["powerAvailableSigma"]
 
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
