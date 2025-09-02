@@ -30,9 +30,9 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 7*24                 # Considered time period in hours
-timeStep = 1                                # Time step of optimization in hours
-timeLimit = 60                           # Time limit for the solver to terminate in seconds
+optimizationHorizon = 3*24                 # Considered time period in hours
+timeStep = 1                               # Time step of optimization in hours
+timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
 numHoursToSimulate = 1                     # Number of hours to simulate before adaptation takes place
@@ -42,7 +42,9 @@ useRealForecast = False
 
 objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensity, 3: Amount methanol
 
-inputParametersManually = False             
+inputParametersManually = False             # Put input parameters manually
+
+considerDestillation = False                # If true destillation is considered
 
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
@@ -51,7 +53,7 @@ rateOfChangeConstraints = False            # If true rate of change constraints 
 transitionConstraints = True                # If true transition constraints will be considered
 powerSale = False                           # If true sale of power from battery will be considered
 powerPurchase = True                        # If true purchase of power from the grid will be considered
-considerPV = False                         # If true pv data will be considered, otherwise it is set to zero
+considerPV = False                        # If true pv data will be considered, otherwise it is set to zero
 considerWT = False                        # If true wind data will be considered, otherwise it is set to zero
 considerBattery = False                     # If true battery will be considered, otherwise it is set to zero
 peakLoadCapping = False                     # If true, the power input is limited up to a fixed value
@@ -61,7 +63,7 @@ pvUncertainty = "weather_forecast"             # "power_noise", "weather_noise",
 use_wtUncertainty = False
 wtUncertainty = "weather_forecast"             # "power_noise", "weather_noise", "weather_forecast"
 
-strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v4\calc'
+strPathCharMapData = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_Aspen_v4\Test'
 strPathCharMapDataCalc = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\calc'
 strPathCharMapDataDrift = r'C:\PROJEKTE\PTX\Max\50_Daten\01_Stationäre_Kennfelder\maps_plant\drift'
 strPathPVData = r'C:\PROJEKTE\PTX\Max\50_Daten\05_PV'
@@ -80,6 +82,7 @@ args = [optimizationHorizon,
         useRealForecast,
         objectiveFunction,
         inputParametersManually,
+        considerDestillation,
         benchmark,
         sameOutputAsBenchmark,
         rateOfChangeConstraints,

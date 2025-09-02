@@ -91,6 +91,9 @@ class PV:
         else:
             self.arrPowerAvailable = np.zeros(len(self.powerOutput))
 
+        ## Repeat power depending on time step
+        self.arrPowerAvailable = [x for x in self.arrPowerAvailable for _ in range(int(1 / self.param.param['controlParameters']['timeStep']))]
+
         if len(self.arrPowerAvailable) < self.param.param["controlParameters"]["numberOfTimeSteps"]:
             raise Exception("Error: The start time and the time of the weather forecast or the historical weather data do not match")
 
@@ -112,7 +115,12 @@ class PV:
         poa_data['temp_air'] = components_data['T2m']
         poa_data['wind_speed'] = components_data['WS10m']
         poa_data.index = pd.to_datetime(poa_data.index, format="%Y%m%d:%H%M")
+
+        #round the entries down to the full hour
+        if poa_data.index[0].minute != 0 or poa_data.index[0].second != 0 or poa_data.index[0].microsecond != 0:
+            poa_data.index = pd.date_range(start=poa_data.index[0] - pd.Timedelta(minutes=poa_data.index[0].minute,seconds= poa_data.index[0].second,microseconds = poa_data.index[0].microsecond), periods=len(poa_data), freq='h')
         self.csv_weather_data = poa_data
+
 
 
     def funcGetOnlineData(self):

@@ -37,39 +37,38 @@ class Result():
         if optModel.m.Status == GRB.OPTIMAL or (optModel.m.Status == GRB.TIME_LIMIT and optModel.m.SolCount > 0):
             solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP)
             self.dictResult['input']['operationPoint_CO2CAP'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP)))
+            self.dictResult['input']['operationPoint_CO2CAP_List'] = []
             self.dictResult['input']['massFlowBiogasIn'] = []
-            for i in self.arrTime:
-                for j in cm.arrOperationPointsCO2CAP:
-                    self.dictResult['input']['operationPoint_CO2CAP'][i,j] = solution[i,j]
-                    if solution[i,j] == 1:
-                        self.dictResult['input']['massFlowBiogasIn'].append(cm.arrBiogasInValuesConversion[j])
-
-            solution = optModel.m.getAttr('X', optModel.OptVarOperationPointCO2CAP)
-            self.dictResult['input']['operationPoint_CO2CAP'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsCO2CAP)))
             self.dictResult['input']['massFlowHydrogenIn'] = []
             for i in self.arrTime:
                 for j in cm.arrOperationPointsCO2CAP:
                     self.dictResult['input']['operationPoint_CO2CAP'][i,j] = solution[i,j]
                     if solution[i,j] == 1:
+                        self.dictResult['input']['massFlowBiogasIn'].append(cm.arrBiogasInValuesConversion[j])
                         self.dictResult['input']['massFlowHydrogenIn'].append(cm.arrHydrogenInValuesConversion[j])
+                        self.dictResult['input']['operationPoint_CO2CAP_List'].append(j)
 
             solution = optModel.m.getAttr('X', optModel.OptVarOperationPointSYN)
             self.dictResult['input']['operationPoint_SYN'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsSYN)))
+            self.dictResult['input']['operationPoint_SYN_List'] = []
             self.dictResult['input']['massFlowSynthesisgasIn'] = []
             for i in self.arrTime:
                 for j in cm.arrOperationPointsSYN:
                     self.dictResult['input']['operationPoint_SYN'][i,j] = solution[i,j]
                     if int(solution[i,j]) == 1:
                         self.dictResult['input']['massFlowSynthesisgasIn'].append(cm.arrSynthesisgasInValuesConversion[j])
+                        self.dictResult['input']['operationPoint_SYN_List'].append(j)
                     
             solution = optModel.m.getAttr('X', optModel.OptVarOperationPointDIS)
             self.dictResult['input']['operationPoint_DIS'] = np.empty(shape=(len(self.arrTime),len(cm.arrOperationPointsDIS)))
+            self.dictResult['input']['operationPoint_DIS_List'] = []
             self.dictResult['input']['volFlowMethanolWaterStorage'] = []
             for i in self.arrTime:
                 for j in cm.arrOperationPointsDIS:
                     self.dictResult['input']['operationPoint_DIS'][i,j] = solution[i,j]
                     if int(solution[i,j]) == 1:
                         self.dictResult['input']['volFlowMethanolWaterStorage'].append(cm.arrMethanolWaterInDistillationValuesConversion[j])
+                        self.dictResult['input']['operationPoint_DIS_List'].append(j)
 
 
             solution = optModel.m.getAttr('X', optModel.OptVarCurrentStateCO2CAP)
@@ -407,12 +406,12 @@ class Result():
 
         print('Production')
         print('')
-        print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut']))
+        print('Methanol: ', np.sum(self.dictResult['output_Scheduling']['producedMethanol']))
         print('Methanol-Water: ', np.sum(self.dictResult['output_Scheduling']['producedMethanolWater']))
         print('Methan: ' , np.sum(self.dictResult['output_Scheduling']['massFlowBiogasOut']))
 
         print('')
-        print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['volFlowMethanolOut'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
+        print('Methanol in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['producedMethanol'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
         print('Methanol-Water in last Simulation Step: ', np.sum(self.dictResult['output_Scheduling']['producedMethanolWater'][0:self.param.param['controlParameters']['numTimeStepsToSimulate']]))
         print('')
         print('##########')

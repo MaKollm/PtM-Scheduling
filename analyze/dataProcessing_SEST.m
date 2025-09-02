@@ -1,8 +1,8 @@
 clear all
 
 % Specify the folder containing the MATLAB files
-folderPath = 'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2\';
-scenario = ["Case_112_econ"];
+folderPath = 'C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\01_data\results_v2_new\';
+scenario = ["Case_1", "Case_5"];
 
 for j = 1:numel(scenario)
     % List all files in the folder
@@ -51,7 +51,7 @@ result = [mean(costElectricity(i,:));
             mean(methanol(i,:));
             mean(runtime(i,:));
             mean(gap(i,:));
-            sum(numInf)];
+            sum(numInf(i,:))];
 
 isInf = isinf(gap(i,:));
 idx = [];
@@ -60,13 +60,13 @@ for j = 1:numel(isInf)
         idx = [idx, j];
     end
 end
-result2 = [mean(nonzeros(costElectricity(i,:)));
-            mean(nonzeros(costCarbonIntensity(i,:)));
-            mean(methanol(i,idx));
-            mean(runtime(i,idx));
-            mean(gap(i,idx));
-            sum(numInf)
-            sum(numZeros)];
+%result2 = [mean(nonzeros(costElectricity(i,:)));
+%            mean(nonzeros(costCarbonIntensity(i,:)));
+%            mean(methanol(i,idx));
+%            mean(runtime(i,idx));
+%            mean(gap(i,idx));
+%            sum(numInf)
+%            sum(numZeros)];
             
 
 %%
@@ -82,7 +82,7 @@ end
 fontSize = 10;
 path = "C:\PROJEKTE\PTX\Max\21_Scheduling\01_Scheduling_Results\02_images\IEEE_SEST_2025";
 
-num = 30;
+num = 16;
 
 % figure('Position',[10 10 560 250])
 % plot(1:120,power,'LineWidth',2)
@@ -140,65 +140,65 @@ set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
 exportgraphics(gcf,strcat(path + "\electricity_consumption_price_stationary_variable.eps"),'ContentType','vector','Resolution',600)
 
 
-% Operation Mode + Point CO2CAP
-figure
-plot(cellInput{1,num}.massFlowHydrogenIn,'Color',"#0072BD",'LineWidth',2)
-grid on
-hold on
-ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
-yyaxis right
-plot(cellInput{1,num}.currentStateCO2CAP_SYN,'Color',"#A2142F",'LineWidth',2)
-ax = gca;
-ax.YAxis(2).Color = "#A2142F";
-
-xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
-ylabel("State of process",'FontSize',fontSize,'Interpreter','LaTeX')
-yticks([0 1 2 3 4])
-yticklabels({'Off','Startup','Standby','On','Shutdown'})
-%legend("variable","stationary",'FontSize',fontSize,'Interpreter','LaTeX')
-xlim([0 121])
-ylim([0 4])
-set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
-exportgraphics(gcf,strcat(path + "\operation_point_state_CO2CAP.eps"),'ContentType','vector','Resolution',600)
-
-
-% Operation Mode + Point DIS
-figure
-plot(cellInput{1,num}.massFlowMethanolWaterStorage,'Color',"#0072BD",'LineWidth',2)
-grid on
-hold on
-ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
-yyaxis right
-plot(cellInput{1,num}.currentStateDIS,'Color',"#A2142F",'LineWidth',2)
-ax = gca;
-ax.YAxis(2).Color = "#A2142F";
-
-xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
-ylabel("State of process",'FontSize',fontSize,'Interpreter','LaTeX')
-yticks([0 1 2 3 4])
-yticklabels({'Off','Startup','Standby','On','Shutdown'})
-%legend("variable","stationary",'FontSize',fontSize,'Interpreter','LaTeX')
-xlim([0 121])
-ylim([0 4])
-set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
-exportgraphics(gcf,strcat(path + "\operation_point_state_DIS.eps"),'ContentType','vector','Resolution',600)
-
-
-% Boxplot of prices / reduction
-figure
-boxplot(costElectricity','Labels',{'Flexible','Stationary'})
-xlabel("Case",'FontSize',fontSize,'Interpreter','LaTeX')
-ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
-set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
-exportgraphics(gcf,strcat(path + "\boxplot_prices.eps"),'ContentType','vector','Resolution',600)
-
-
-figure
-boxplot(costElectricity(1,:)' ./ costElectricity(2,:)','Labels',{'Flexible vs. Stationary'})
-xlabel("Case",'FontSize',fontSize,'Interpreter','LaTeX')
-ylabel("Cost reduction (%)",'FontSize',fontSize,'Interpreter','LaTeX')
-set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
-exportgraphics(gcf,strcat(path + "\boxplot_cost_reduction.eps"),'ContentType','vector','Resolution',600)
+% % Operation Mode + Point CO2CAP
+% figure
+% plot(cellInput{1,num}.massFlowHydrogenIn,'Color',"#0072BD",'LineWidth',2)
+% grid on
+% hold on
+% ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
+% yyaxis right
+% plot(cellInput{1,num}.currentStateCO2CAP_SYN,'Color',"#A2142F",'LineWidth',2)
+% ax = gca;
+% ax.YAxis(2).Color = "#A2142F";
+% 
+% xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+% ylabel("State of process",'FontSize',fontSize,'Interpreter','LaTeX')
+% yticks([0 1 2 3 4])
+% yticklabels({'Off','Startup','Standby','On','Shutdown'})
+% %legend("variable","stationary",'FontSize',fontSize,'Interpreter','LaTeX')
+% xlim([0 121])
+% ylim([0 4])
+% set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+% exportgraphics(gcf,strcat(path + "\operation_point_state_CO2CAP.eps"),'ContentType','vector','Resolution',600)
+% 
+% 
+% % Operation Mode + Point DIS
+% figure
+% plot(cellInput{1,num}.massFlowMethanolWaterStorage,'Color',"#0072BD",'LineWidth',2)
+% grid on
+% hold on
+% ylabel("Mass flow hydrogen (kg/h)",'FontSize',fontSize,'Interpreter','LaTeX')
+% yyaxis right
+% plot(cellInput{1,num}.currentStateDIS,'Color',"#A2142F",'LineWidth',2)
+% ax = gca;
+% ax.YAxis(2).Color = "#A2142F";
+% 
+% xlabel("Time (h)",'FontSize',fontSize,'Interpreter','LaTeX')
+% ylabel("State of process",'FontSize',fontSize,'Interpreter','LaTeX')
+% yticks([0 1 2 3 4])
+% yticklabels({'Off','Startup','Standby','On','Shutdown'})
+% %legend("variable","stationary",'FontSize',fontSize,'Interpreter','LaTeX')
+% xlim([0 121])
+% ylim([0 4])
+% set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+% exportgraphics(gcf,strcat(path + "\operation_point_state_DIS.eps"),'ContentType','vector','Resolution',600)
+% 
+% 
+% % Boxplot of prices / reduction
+% figure
+% boxplot(costElectricity','Labels',{'Flexible','Stationary'})
+% xlabel("Case",'FontSize',fontSize,'Interpreter','LaTeX')
+% ylabel("Electricity price (euro/kWh)",'FontSize',fontSize,'Interpreter','LaTeX')
+% set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+% exportgraphics(gcf,strcat(path + "\boxplot_prices.eps"),'ContentType','vector','Resolution',600)
+% 
+% 
+% figure
+% boxplot(costElectricity(1,:)' ./ costElectricity(2,:)','Labels',{'Flexible vs. Stationary'})
+% xlabel("Case",'FontSize',fontSize,'Interpreter','LaTeX')
+% ylabel("Cost reduction (%)",'FontSize',fontSize,'Interpreter','LaTeX')
+% set(gca,'FontSize',fontSize,'TickLabelInterpreter','latex')
+% exportgraphics(gcf,strcat(path + "\boxplot_cost_reduction.eps"),'ContentType','vector','Resolution',600)
 % % PV
 % for i = 1:121
 %     bary(i,:) = [input.powerBought(i), input.usageOfPV(i)];

@@ -27,32 +27,34 @@ class Param:
 
             self.inputParametersManually = args[9]
 
-            self.benchmark = args[10]
-            self.sameOutputAsBenchmark = args[11]
+            self.considerDestillation = args[10]
 
-            self.rateOfChangeConstraints = args[12]
-            self.transitionConstraints = args[13]
-            self.powerSale = args[14]
-            self.powerPurchase = args[15]
-            self.considerPV = args[16]
-            self.considerWT = args[17]
-            self.considerBattery = args[18]
-            self.peakLoadCapping = args[19]
+            self.benchmark = args[11]
+            self.sameOutputAsBenchmark = args[12]
 
-
-            self.use_pvUncertainty = args[20]
-            self.pvUncertainty = args[21]
-            self.use_wtUncertainty = args[22]
-            self.wtUncertainty = args[23]
+            self.rateOfChangeConstraints = args[13]
+            self.transitionConstraints = args[14]
+            self.powerSale = args[15]
+            self.powerPurchase = args[16]
+            self.considerPV = args[17]
+            self.considerWT = args[18]
+            self.considerBattery = args[19]
+            self.peakLoadCapping = args[20]
 
 
-            self.strPathCharMapData = args[24]
-            self.strPathCharMapDataCalc = args[25]
-            self.strPathPVData = args[26]
-            self.strPathWTData = args[27]
-            self.strPathPPData = args[28]
-            self.strPathInitialData = args[29]
-            self.strPathAdaptationData = args[30]
+            self.use_pvUncertainty = args[21]
+            self.pvUncertainty = args[22]
+            self.use_wtUncertainty = args[23]
+            self.wtUncertainty = args[24]
+
+
+            self.strPathCharMapData = args[25]
+            self.strPathCharMapDataCalc = args[26]
+            self.strPathPVData = args[27]
+            self.strPathWTData = args[28]
+            self.strPathPPData = args[29]
+            self.strPathInitialData = args[30]
+            self.strPathAdaptationData = args[31]
         
     def funcUpdateTime(self, iteration):
         self.param['controlParameters']['startTimeIteration'] = self.param['controlParameters']['startTime'] + pd.Timedelta(hours=self.param["controlParameters"]["optimizationHorizon"]*iteration)
@@ -299,8 +301,8 @@ class Param:
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 15
-        self.param['production']['minMethanolOpt'] = 0 #113.75 #108.065
-        self.param['production']['minMethanolWater'] = 15
+        self.param['production']['minMethanolOpt'] = 20 #113.75 #108.065
+        self.param['production']['minMethanolWater'] = 20
         self.param['production']['methanol'] = 0      
         
         
@@ -329,6 +331,7 @@ class Param:
         self.param['controlParameters']['useRealForecast'] = self.useRealForecast
         self.param['controlParameters']['objectiveFunction'] = self.objectiveFunction
         self.param['controlParameters']['inputParametersManually'] = self.inputParametersManually
+        self.param['controlParameters']['considerDestillation'] = self.considerDestillation
         self.param['controlParameters']['benchmark'] = self.benchmark
         self.param['controlParameters']['sameOutputAsBenchmark'] = self.sameOutputAsBenchmark
         self.param['controlParameters']['rateOfChangeConstraints'] = self.rateOfChangeConstraints
@@ -368,6 +371,7 @@ class Param:
         self.param['charMap']['CO2CAP']['index']['massFlowHydrogenIn'] = 3
         self.param['charMap']['CO2CAP']['index']['massFlowBiogasIn'] = 2
         self.param['charMap']['CO2CAP']['index']['massFlowBiogasOut'] = 9
+        self.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasOut'] = 6
         self.param['charMap']['CO2CAP']['index']['moleFractionMethaneBiogasOut'] = 7
         self.param['charMap']['CO2CAP']['index']['moleFractionCO2BiogasOut'] = 8
         self.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasIn'] = 6
@@ -409,7 +413,13 @@ class Param:
         self.param['biogas']['pressureOut'] = 3
         self.param['biogas']['densityIn'] = 3.73426
         self.param['biogas']['brennwert'] = 6.5
-        self.param['biogas']['minimumMoleFractionMethane'] = 0.94
+        self.param['biogas']['minimumMoleFractionCH4'] = 0.94
+        self.param['biogas']['maximumMoleFractionCO2'] = 0.1
+
+
+        ## Synthesis gas parameters
+        self.param['synthesisgas'] = {}
+        self.param['synthesisgas']['H2toCO2Ratio'] = 3
 
 
 
@@ -472,7 +482,7 @@ class Param:
         self.param['pv']['module'] = 'Canadian_Solar_CS5P_220M___2009_'
         self.param['pv']['inverter'] = 'ABB__PVI_3_0_OUTD_S_US__208V_'#'ABB__MICRO_0_25_I_OUTD_US_208__208V_'
         self.param['pv']['powerOfModule'] = 0.22
-        self.param['pv']['powerOfSystem'] = 200
+        self.param['pv']['powerOfSystem'] = 20
         self.param['pv']['numberOfUncertaintySamples'] = 100
         self.param["pv"]["covScalarPowerOutput"] = 10
         self.param["pv"]["covWeatherData"] = {'poa_global':10, 'poa_direct':10, 'poa_diffuse':10, 'temp_air':1, 'wind_speed':3}
@@ -489,7 +499,7 @@ class Param:
         self.param["wt"]["roughnessLength"] = 2 #find true value for actual coordinates
         self.param["wt"]["turbineType"] = "E-126/4200" #as in oedb turbine library
         self.param["wt"]["hubHeight"] = 135 #in m
-        self.param['wt']['powerOfSystem'] = 100
+        self.param['wt']['powerOfSystem'] = 50
         self.param['wt']['powerOfTurbine'] = 4200 # 4200000 W
         self.param['wt']['numberOfUncertaintySamples'] = 100
         self.param["wt"]["covScalarPowerOutput"] = 100
@@ -501,7 +511,7 @@ class Param:
 
         ## Battery
         self.param['battery'] = {}                                                   # https://www.bsl-battery.com/100kwh-commercial-solar-battery-storage.html
-        self.param['battery']['power'] = 300#50             # kWh
+        self.param['battery']['power'] = 100#50             # kWh
         self.param['battery']['voltage'] = 512#562          # V  
         self.param['battery']['capacity'] = self.param['battery']['power'] * 1000 / self.param['battery']['voltage']             # Ah
         self.param['battery']['minCharge'] = self.param['battery']['power'] * 0.05#0.01

@@ -22,7 +22,7 @@ class CharMap():
         self.iIndexMassFlowBiogasOut = self.param.param['charMap']['CO2CAP']['index']['massFlowBiogasOut']
         self.iIndexMoleFractionMethaneBiogasOut = self.param.param['charMap']['CO2CAP']['index']['moleFractionMethaneBiogasOut']
         self.iIndexMoleFractionCO2BiogasOut = self.param.param['charMap']['CO2CAP']['index']['moleFractionCO2BiogasOut']
-        self.iIndexMassFlowSynthesisgasIn = self.param.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasIn']
+        self.iIndexMassFlowSynthesisgasOut = self.param.param['charMap']['CO2CAP']['index']['massFlowSynthesisgasOut']
         self.iIndexMoleFractionH2SynthesisgasIn = self.param.param['charMap']['CO2CAP']['index']['moleFractionH2Synthesisgas']
         self.iIndexMoleFractionCO2SynthesisgasIn = self.param.param['charMap']['CO2CAP']['index']['moleFractionCO2Synthesisgas']
         self.iIndexPowerPlantComponentsUnit1 = self.param.param['charMap']['CO2CAP']['index']['powerPlantComponentsUnit1']
@@ -168,6 +168,49 @@ class CharMap():
         self.funcSetCharMapsOutput()
 
 
+                
+        ## Time constants
+        dataFrameCharMapCO2Capture_T = pd.read_excel(pathToCharMapData + "\PtMCharMap_CO2_Capture_T.xlsx")
+        dataFrameCharMapCO2Capture_T = dataFrameCharMapCO2Capture_T.iloc[2:]
+        arrCharMapDefaultCO2Capture_T = dataFrameCharMapCO2Capture_T.to_numpy()
+        dataFrameCharMapSynthesis_T = pd.read_excel(pathToCharMapData + "\PtMCharMap_Synthesis_T.xlsx")
+        dataFrameCharMapSynthesis_T = dataFrameCharMapSynthesis_T.iloc[2:]
+        arrCharMapDefaultSynthesis_T = dataFrameCharMapSynthesis_T.to_numpy()
+        dataFrameCharMapDistillation_T = pd.read_excel(pathToCharMapData + "\PtMCharMap_Distillation_T.xlsx")
+        dataFrameCharMapDistillation_T = dataFrameCharMapDistillation_T.iloc[2:]
+        arrCharMapDefaultDistillation_T = dataFrameCharMapDistillation_T.to_numpy()
+
+
+        self.arrCharMap_T = []
+        ## Calculation of characteristic fields of CO2CAP
+        self.arrCharMap_T.append([])
+        self.iLengthCharMapCO2CAP_SYN = arrCharMapDefaultCO2Capture_T.shape[1]
+
+        for i in range(0,self.iLengthCharMapCO2CAP_SYN):
+            self.arrCharMap_T[0].append({})
+            self.arrCharMap_T[0][(i)] = arrCharMapDefaultCO2Capture_T[-1,i]
+
+        ## Calculation of characteristic field of SYN
+        self.arrCharMap_T.append([])
+        self.iLengthCharMapSYN = arrCharMapDefaultSynthesis_T.shape[1]
+        
+        for i in range(0,self.iLengthCharMapSYN):
+            self.arrCharMap_T[1].append({})
+            self.arrCharMap_T[1][(i)] = arrCharMapDefaultSynthesis_T[-1,i]
+
+
+        ## Calculation of characteristic field of DIS
+        self.arrCharMap_T.append([])
+        self.iLengthCharMapDIS = arrCharMapDefaultDistillation_T.shape[1]
+        
+        for i in range(0,self.iLengthCharMapDIS):
+            self.arrCharMap_T[2].append({})
+            self.arrCharMap_T[2][(i)] = arrCharMapDefaultDistillation_T[-1,i]
+
+        
+        self.funcSetTimeConstants()
+
+
     def funcSetCharMapsInputVariables(self):
         self.arrOperationPointsCO2CAP = self.arrOperationPoints[0]
         self.arrOperationPointsSYN = self.arrOperationPoints[1]
@@ -189,7 +232,7 @@ class CharMap():
         self.massFlowBiogasOut = self.arrCharMap[0][self.iIndexMassFlowBiogasOut] 
         self.moleFractionMethaneBiogasOut = self.arrCharMap[0][self.iIndexMoleFractionMethaneBiogasOut]
         self.moleFractionCO2BiogasOut = self.arrCharMap[0][self.iIndexMoleFractionCO2BiogasOut]
-        self.massFlowSynthesisgasInCO2CAP = self.arrCharMap[0][self.iIndexMassFlowSynthesisgasIn]
+        self.massFlowSynthesisgasOutCO2CAP = self.arrCharMap[0][self.iIndexMassFlowSynthesisgasOut]
         self.moleFractionH2SynthesisgasIn = self.arrCharMap[0][self.iIndexMoleFractionH2SynthesisgasIn]
         self.moleFractionCO2SynthesisgasIn = self.arrCharMap[0][self.iIndexMoleFractionCO2SynthesisgasIn]
         self.powerPlantComponentsUnit1 = self.arrCharMap[0][self.iIndexPowerPlantComponentsUnit1]
@@ -211,5 +254,32 @@ class CharMap():
         self.powerPlantComponentsUnit3 = self.arrCharMap[2][self.iIndexPowerPlantComponentsUnit3]
 
         self.powerElectrolyser = self.arrCharMap[3][0]
+
+
+    def funcSetTimeConstants(self):
+        self.massFlowHydrogenInCO2CAP_T = self.arrCharMap_T[0][self.iIndexMassFlowBiogasIn]  
+        self.massFlowBiogasIn_T = self.arrCharMap_T[0][self.iIndexMassFlowBiogasIn]  
+        self.massFlowBiogasOut_T = self.arrCharMap_T[0][self.iIndexMassFlowBiogasOut] 
+        self.moleFractionMethaneBiogasOut_T = self.arrCharMap_T[0][self.iIndexMoleFractionMethaneBiogasOut]
+        self.moleFractionCO2BiogasOut_T = self.arrCharMap_T[0][self.iIndexMoleFractionCO2BiogasOut]
+        self.massFlowSynthesisgasOutCO2CAP_T = self.arrCharMap_T[0][self.iIndexMassFlowSynthesisgasOut]
+        self.moleFractionH2SynthesisgasIn_T = self.arrCharMap_T[0][self.iIndexMoleFractionH2SynthesisgasIn]
+        self.moleFractionCO2SynthesisgasIn_T = self.arrCharMap_T[0][self.iIndexMoleFractionCO2SynthesisgasIn]
+        self.powerPlantComponentsUnit1_T = self.arrCharMap_T[0][self.iIndexPowerPlantComponentsUnit1]
+
+        self.massFlowHydrogenInSYN_T = self.arrCharMap_T[1][self.iIndexMassFlowHydrogenInSYN]
+        self.massFlowSynthesisgasInSYN_T = self.arrCharMap_T[1][self.iIndexMassFlowSynthesisgasIn]
+        self.massFlowMethanolWaterStorageIn_T = self.arrCharMap_T[1][self.iIndexMassFlowMethanolWaterStorageIn]
+        self.volFlowMethanolWaterStorageIn_T = self.arrCharMap_T[1][self.iIndexVolFlowMethanolWaterStorageIn]
+        self.densityMethanolWaterStorageIn_T = self.arrCharMap_T[1][self.iIndexDensityMethanolWaterStorageIn]
+        self.massFlowSynthesisPurge_T = self.arrCharMap_T[1][self.iIndexMassFlowSynthesisPurge]
+        self.moleFractionCO2SynthesisPurge_T = self.arrCharMap_T[1][self.iIndexMoleFractionCO2SynthesisPurge]
+        self.powerPlantComponentsUnit2_T = self.arrCharMap_T[1][self.iIndexPowerPlantComponentsUnit2]
+
+        self.massFlowMethanolWaterStorageOut_T = self.arrCharMap_T[2][self.iIndexMassFlowMethanolWaterStorageOut]  
+        self.massFlowMethanolOut_T = self.arrCharMap_T[2][self.iIndexMassFlowMethanolOut] 
+        self.volFlowMethanolOut_T = self.arrCharMap_T[2][self.iIndexVolFlowMethanolOut] 
+        self.moleFractionMethanolOut_T = self.arrCharMap_T[2][self.iIndexMoleFractionMethanolOut]
+        self.powerPlantComponentsUnit3_T = self.arrCharMap_T[2][self.iIndexPowerPlantComponentsUnit3]
 
 

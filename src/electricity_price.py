@@ -31,7 +31,6 @@ class PowerPrice():
         else:
             self.funcUpdateCSV(param)
 
-
         ## Repeat prices depending on time step
         self.arrPowerPriceHourly = [price for price in self.arrPowerPriceHourly for _ in range(int(1 / self.param.param['controlParameters']['timeStep']))]
 

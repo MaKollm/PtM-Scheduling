@@ -40,6 +40,7 @@ def visu(result):
         plt.title('State of the CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('state')
+        plt.grid(True)
 
         # State of Synthesis
         plt.subplot(2,3,2)
@@ -47,6 +48,7 @@ def visu(result):
         plt.title('State of the Synthesis')
         plt.xlabel('time in h')
         plt.ylabel('state')
+        plt.grid(True)
 
         # State of Distillation
         plt.subplot(2,3,3)
@@ -54,28 +56,31 @@ def visu(result):
         plt.title('State of the Distillation')
         plt.xlabel('time in h')
         plt.ylabel('state')
+        plt.grid(True)
 
         # Operating point of CO2-Capture
         plt.subplot(2,3,4)
-        plt.plot(result['input']['massFlowBiogasIn'])
+        plt.plot(result['input']['operationPoint_CO2CAP_List'])
         plt.title('Operating point of the CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('operating point')
+        plt.grid(True)
 
         # Operating point of Synthesis
         plt.subplot(2,3,5)
-        plt.plot(result['input']['massFlowSynthesisgasIn'])
-        plt.plot(result['output_Scheduling']['volFlowMethanolWaterStorageIn'])
+        plt.plot(result['input']['operationPoint_SYN_List'])
         plt.title('Operating point of the Synthesis')
         plt.xlabel('time in h')
         plt.ylabel('operating point')
+        plt.grid(True)
 
         # Operating point of Distillation
         plt.subplot(2,3,6)
-        plt.plot(result['input']['volFlowMethanolWaterStorage'])
+        plt.plot(result['input']['operationPoint_DIS_List'])
         plt.title('Operating point of the Distillation')
         plt.xlabel('time in h')
         plt.ylabel('operating point')
+        plt.grid(True)
 
 
 
@@ -102,6 +107,7 @@ def visu(result):
         plt.title('Battery charge')
         plt.xlabel('time in h')
         plt.ylabel('SOC in %')
+        plt.grid(True)
 
         # Hydrogen storage
         plt.subplot(3,1,2)
@@ -112,6 +118,7 @@ def visu(result):
         plt.title('Hydrogen storage pressure')
         plt.xlabel('time in h')
         plt.ylabel('pressure in bar')
+        plt.grid(True)
 
         # MeOH-Water storage
         plt.subplot(3,1,3)
@@ -122,6 +129,7 @@ def visu(result):
         plt.title('Methanol-Water storage filling level')
         plt.xlabel('time in h')
         plt.ylabel('filling in cubic meter')
+        plt.grid(True)
 
 
         plt.figure(3)
@@ -131,6 +139,7 @@ def visu(result):
         plt.title('Power electrolyser')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power of CO2-Capture
         plt.subplot(4,1,2)
@@ -138,6 +147,7 @@ def visu(result):
         plt.title('Power CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power of Synthesis
         plt.subplot(4,1,3)
@@ -145,6 +155,7 @@ def visu(result):
         plt.title('Power Synthesis')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power of CO2-Capture and Synthesis
         plt.subplot(4,1,4)
@@ -152,6 +163,7 @@ def visu(result):
         plt.title('Power Distillation')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
 
 
@@ -162,6 +174,7 @@ def visu(result):
         plt.title('Power in battery from grid')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power in battery pv
         plt.subplot(2,2,2)
@@ -169,6 +182,7 @@ def visu(result):
         plt.title('Power in battery pv')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power out battery process
         plt.subplot(2,2,3)
@@ -176,6 +190,7 @@ def visu(result):
         plt.title('Power out battery for process')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         # Power out battery sold
         plt.subplot(2,2,4)
@@ -183,6 +198,7 @@ def visu(result):
         plt.title('Power out battery sold')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
 
 
@@ -193,6 +209,7 @@ def visu(result):
         plt.title('PV')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
         plt.figure(6)
         # PV
@@ -201,6 +218,7 @@ def visu(result):
         plt.title('Wind')
         plt.xlabel('time in h')
         plt.ylabel('power in kW')
+        plt.grid(True)
 
 
 
@@ -212,10 +230,27 @@ def visu(result):
         ax1.set_xlabel('time in h')
         ax1.set_ylabel('electricity from grid in kWh')
         ax2.set_ylabel('electricity price in euro/kWh')
+        ax1.grid(True)
+        
 
+        # Dynamic variables CO2 Capture
+        plt.subplot(2,1,1)
+        plt.plot(result.dictOutput_Scheduling['massFlowBiogasOut'])
+        plt.plot(result.dictOutput_Scheduling['massFlowSynthesisgasOut'])
+        plt.title('Mass flows CO2-Capture')
+        plt.xlabel('time in h')
+        plt.ylabel('mass flow in kg/h')
+        plt.legend("biogas out", "synthesis gas out")
+        plt.grid(True)
 
-        # Volume flow methanol water
-
+        plt.subplot(2,1,2)
+        plt.plot(result['output_Scheduling']['moleFractionCO2BiogasOut'])
+        plt.plot(result['output_Scheduling']['moleFractionH2SynthesisgasIn'])
+        plt.plot(result['output_Scheduling']['moleFractionCO2SynthesisgasIn'])
+        plt.title('Mole fractions CO2-Capture')
+        plt.xlabel('time in h')
+        plt.ylabel('fraction [-]')
+        plt.grid(True)
 
 
         plt.show()
