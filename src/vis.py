@@ -8,7 +8,7 @@ import imageio
 
 
 def load_and_visu():
-        pathInitialData = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v3\input_data.pkl' 
+        pathInitialData = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM\input_data.pkl' 
 
         if os.path.isfile(pathInitialData) == True:
                 with open(pathInitialData, 'rb') as f:
@@ -17,7 +17,7 @@ def load_and_visu():
                 visu(initialData)
 
 def load_and_createGif():
-        pathInitialData = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM_v3' 
+        pathInitialData = r'C:\PROJEKTE\PTX\Max\21_Scheduling\gurobi\PtM' 
         filename = 'input_data_'
         matching_files = [f for f in os.listdir(pathInitialData) if filename in f]
         file_contents = []
@@ -233,14 +233,15 @@ def visu(result):
         ax1.grid(True)
         
 
+        plt.figure(8)
         # Dynamic variables CO2 Capture
         plt.subplot(2,1,1)
-        plt.plot(result.dictOutput_Scheduling['massFlowBiogasOut'])
-        plt.plot(result.dictOutput_Scheduling['massFlowSynthesisgasOut'])
+        plt.plot(result['output_Scheduling']['massFlowBiogasOut'])
+        plt.plot(result['output_Scheduling']['massFlowSynthesisgasOut'])
         plt.title('Mass flows CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('mass flow in kg/h')
-        plt.legend("biogas out", "synthesis gas out")
+        plt.legend(["biogas out", "synthesis gas out"])
         plt.grid(True)
 
         plt.subplot(2,1,2)
@@ -250,6 +251,7 @@ def visu(result):
         plt.title('Mole fractions CO2-Capture')
         plt.xlabel('time in h')
         plt.ylabel('fraction [-]')
+        plt.legend(["mole fraction CO2 biogas out", "mole fraction H2 synthesis gas", "mole fraction CO2 synthesis gas"])
         plt.grid(True)
 
 

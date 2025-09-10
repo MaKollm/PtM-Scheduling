@@ -184,7 +184,7 @@ class Optimization_Model:
         fTimeStep = self.param.param['controlParameters']['timeStep']
         
         if self.param.param['controlParameters']['objectiveFunction'] == 1:
-            self.m.setObjective(0 
+            self.m.setObjective(100 
                 + gp.quicksum(self.param.param['prices']['power'][i] * self.OptVarPowerGrid[i] * fTimeStep for i in self.arrTime))
 
         if self.param.param['controlParameters']['objectiveFunction'] == 2:
@@ -214,6 +214,21 @@ class Optimization_Model:
 
 
         ## CO2-Capture
+        # Mass flow biogas in
+        T = cm.massFlowBiogasIn_T
+        alpha = np.min([1,fTimeStep / T])
+        massFlowBiogasIn = list(range(0, len(self.arrTime)))
+        massFlowBiogasIn[0] = gp.quicksum(cm.massFlowBiogasIn[(j)] * self.OptVarOperationPointCO2CAP[(0,j)] for j in cm.arrOperationPointsCO2CAP)
+        for t in self.arrTime[:-1]:
+            massFlowBiogasIn[t+1] = (1 - alpha) * massFlowBiogasIn[t] + alpha * (gp.quicksum(cm.massFlowBiogasIn[(j)] * self.OptVarOperationPointCO2CAP[(t,j)] for j in cm.arrOperationPointsCO2CAP))
+            #massFlowBiogasIn[t+1] = gp.quicksum(cm.massFlowBiogasIn[(j)] * self.OptVarOperationPointCO2CAP[(t,j)] for j in cm.arrOperationPointsCO2CAP)
+
+        maxValue = np.abs(max(cm.massFlowBiogasIn[(k)] for k in cm.arrOperationPointsCO2CAP[4:]) - min(cm.massFlowBiogasIn[(k)] for k in cm.arrOperationPointsCO2CAP[4:]))
+
+        #self.m.addConstrs(
+        #    (massFlowBiogasIn[t+1] - massFlowBiogasIn[t] <= alpha * maxValue for t in self.arrTime[:-1]), f"Ramping constraint mass flow biogas in")
+
+
         # Mole fraction H2
         T = cm.moleFractionH2SynthesisgasIn_T
         alpha = np.min([1,fTimeStep / T])

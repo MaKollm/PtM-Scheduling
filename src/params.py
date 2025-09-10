@@ -301,8 +301,8 @@ class Param:
         # Production constants
         self.param['production'] = {}
         self.param['production']['minMethanolBenchmark'] = 15
-        self.param['production']['minMethanolOpt'] = 20 #113.75 #108.065
-        self.param['production']['minMethanolWater'] = 20
+        self.param['production']['minMethanolOpt'] = 30 #113.75 #108.065
+        self.param['production']['minMethanolWater'] = 40
         self.param['production']['methanol'] = 0      
         
         

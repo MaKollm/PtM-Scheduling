@@ -30,8 +30,8 @@ path = os.path.dirname(__file__)
 path = os.path.abspath(os.path.join(path, os.pardir))
 
 ## Control parameters
-optimizationHorizon = 3*24                 # Considered time period in hours
-timeStep = 1                               # Time step of optimization in hours
+optimizationHorizon = 1.5*24                 # Considered time period in hours
+timeStep = 0.25                               # Time step of optimization in hours
 timeLimit = 1000                           # Time limit for the solver to terminate in seconds
 optimalityGap = 0.01                        # Optimality gap for the solver to terminate 
 
@@ -44,7 +44,7 @@ objectiveFunction = 1                       # 1: Power costs, 2: Carbon intensit
 
 inputParametersManually = False             # Put input parameters manually
 
-considerDestillation = False                # If true destillation is considered
+considerDestillation = True                # If true destillation is considered
 
 benchmark = False                           # If true benchmark scenario is calculated
 sameOutputAsBenchmark = False               # If true the optimization has to has the exact same output as the benchmark scenario
